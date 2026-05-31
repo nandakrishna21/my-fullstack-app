@@ -1,0 +1,26 @@
+databases:
+  - name: chat-app-db
+    plan: free
+    databaseName: chat_app
+    user: chat_app_user
+
+services:
+  - type: web
+    name: chat-app-backend
+    plan: free
+    runtime: node
+    repo: https://github.com/nandakrishna21/my-fullstack-app
+    branch: main
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: chat-app-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 10000
+      - key: NODE_VERSION
+        value: 18

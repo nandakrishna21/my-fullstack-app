@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import LoginForm from './components/LoginForm.jsx';
 import ChatRoom from './components/ChatRoom.jsx';
 
-const SOCKET_URL = 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -22,7 +22,7 @@ function App() {
   useEffect(() => {
     if (!token) return;
 
-    const newSocket = io(SOCKET_URL);
+    const newSocket = io(API_URL);
     setSocket(newSocket);
 
     return () => {
