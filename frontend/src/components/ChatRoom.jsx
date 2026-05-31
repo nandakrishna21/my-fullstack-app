@@ -7,8 +7,7 @@ function ChatRoom({ user, token, socket, onLogout }) {
   const [onlineUsers, setOnlineUsers] = useState([]);
 
   useEffect(() => {
-    const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname.includes('github.io') ? 'https://chat-app-backend-fdhs.onrender.com' : 'http://localhost:3001');
-    fetch(`${API_URL}/api/messages`, {
+    fetch('/api/messages', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())

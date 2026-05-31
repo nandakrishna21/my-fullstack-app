@@ -9,8 +9,9 @@ import { authenticateToken } from './middleware/auth.js';
 
 const app = express();
 const server = http.createServer(app);
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',')
+const isProd = process.env.NODE_ENV === 'production';
+const allowedOrigins = isProd
+  ? true
   : ['http://localhost:5173', 'http://localhost:4173'];
 
 const io = new Server(server, {
@@ -67,6 +68,12 @@ io.on('connection', (socket) => {
     }
     console.log('User disconnected:', socket.id);
   });
+});
+
+app.use(express.static('public'));
+
+app.get('*', (_req, res) => {
+  res.sendFile('index.html', { root: 'public' });
 });
 
 const PORT = process.env.PORT || 3001;

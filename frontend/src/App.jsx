@@ -3,8 +3,6 @@ import { io } from 'socket.io-client';
 import LoginForm from './components/LoginForm.jsx';
 import ChatRoom from './components/ChatRoom.jsx';
 
-const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname.includes('github.io') ? 'https://chat-app-backend-fdhs.onrender.com' : 'http://localhost:3001');
-
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -22,7 +20,7 @@ function App() {
   useEffect(() => {
     if (!token) return;
 
-    const newSocket = io(API_URL);
+    const newSocket = io();
     setSocket(newSocket);
 
     return () => {
