@@ -83,29 +83,6 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       .catch(console.error);
   }, [token]);
 
-  const fetchMessages = useCallback((retries = 3) => {
-    if (!activeRoom || !token) return;
-    setLoadingMessages(true);
-    const params = new URLSearchParams({ room_id: activeRoom });
-    if (searchQuery) params.set('search', searchQuery);
-    fetch(`${API_URL}/api/messages?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((data) => { if (Array.isArray(data)) setMessages(data); setLoadingMessages(false); })
-      .catch((err) => {
-        console.error('Fetch messages failed:', err);
-        if (retries > 0) {
-          setTimeout(() => fetchMessages(retries - 1), 3000);
-        } else {
-          setLoadingMessages(false);
-        }
-      });
-  }, [activeRoom, token, searchQuery]);
-
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
@@ -305,9 +282,6 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
 
   const handleClearSearch = () => {
     setSearchQuery('');
-  };
-      .then((data) => { if (Array.isArray(data)) setMessages(data); })
-      .catch(console.error);
   };
 
   const openNewChat = () => {
