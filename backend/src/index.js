@@ -124,7 +124,18 @@ io.on('connection', (socket) => {
       );
       io.emit('new_message', result.rows[0]);
     } catch (err) {
-      console.error('Save message error:', err);
+      console.error('Save message error:', err.message);
+      io.emit('new_message', {
+        id: Date.now(),
+        user_id: data.userId,
+        username: data.username,
+        content: data.content || null,
+        file_url: data.fileUrl || null,
+        file_name: data.fileName || null,
+        file_type: data.fileType || null,
+        file_size: data.fileSize || null,
+        created_at: new Date().toISOString(),
+      });
     }
   });
 
