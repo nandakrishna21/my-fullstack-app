@@ -56,66 +56,6 @@ app.use('/api/auth', authRoutes);
 
 app.use('/uploads', express.static(uploadsDir));
 
-app.post('/api/files/upload', authenticateToken, (req, res) => {
-  upload.single('file')(req, res, async (err) => {
-    if (err) {
-      if (err instanceof multer.MulterError) {
-        return res.status(400).json({ error: 'File too large (max 10MB)' });
-      }
-      return res.status(400).json({ error: err.message });
-    }
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file provided' });
-    }
-    try {
-      const description = req.body.description || '';
-      const result = await pool.query(
-        `INSERT INTO files (user_id, username, file_url, file_name, file_type, file_size, description)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING *`,
-        [req.user.id, req.user.username, `/uploads/${req.file.filename}`, req.file.originalname, req.file.mimetype, req.file.size, description]
-      );
-      res.status(201).json(result.rows[0]);
-    } catch (dbErr) {
-      console.error('Save file error:', dbErr);
-      res.status(500).json({ error: 'Server error' });
-    }
-  });
-});
-
-app.get('/api/files', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM files ORDER BY created_at DESC LIMIT 100'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Fetch files error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.delete('/api/files/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const fileResult = await pool.query('SELECT * FROM files WHERE id = $1 AND user_id = $2', [id, req.user.id]);
-    if (fileResult.rows.length === 0) {
-      return res.status(404).json({ error: 'File not found or not owned by you' });
-    }
-    const file = fileResult.rows[0];
-    const filename = file.file_url.split('/').pop();
-    const filePath = path.join(uploadsDir, filename);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-    await pool.query('DELETE FROM files WHERE id = $1', [id]);
-    res.json({ message: 'File deleted' });
-  } catch (err) {
-    console.error('Delete file error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
 app.post('/api/upload', authenticateToken, (req, res) => {
   upload.single('file')(req, res, (err) => {
     if (err) {

@@ -14,7 +14,7 @@ function hashColor(str) {
   return COLORS[Math.abs(hash) % COLORS.length];
 }
 
-function ChatRoom({ user, token, socket, onLogout, theme, onToggleTheme, onNavigate }) {
+function ChatRoom({ user, token, socket, onLogout, theme, onToggleTheme }) {
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
@@ -171,12 +171,6 @@ function ChatRoom({ user, token, socket, onLogout, theme, onToggleTheme, onNavig
               </div>
             )}
           </div>
-        </div>
-        <div className="sidebar-section">
-          <button className="sidebar-nav-btn" onClick={() => onNavigate('gallery')}>
-            <span className="sidebar-nav-icon">📁</span>
-            File Gallery
-          </button>
         </div>
         <div className="sidebar-section">
           <h3>Online — {onlineCount}</h3>
