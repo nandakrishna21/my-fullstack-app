@@ -34,6 +34,26 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const [loadingMessages, setLoadingMessages] = useState(false);
   const searchInputRef = useRef(null);
 
+  const loadCachedMessages = useCallback((roomId) => {
+    try {
+      const cached = localStorage.getItem(`messages_${roomId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  }, []);
+
+  const cacheMessages = useCallback((roomId, msgs) => {
+    try {
+      localStorage.setItem(`messages_${roomId}`, JSON.stringify(msgs));
+    } catch {}
+  }, []);
+
   const fetchMessages = useCallback((retries = 3) => {
     if (!activeRoom || !token) return;
     setLoadingMessages(true);
@@ -46,7 +66,13 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then((data) => { if (Array.isArray(data)) setMessages(data); setLoadingMessages(false); })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setMessages(data);
+          cacheMessages(activeRoom, data);
+        }
+        setLoadingMessages(false);
+      })
       .catch((err) => {
         console.error('Fetch messages failed:', err);
         if (retries > 0) {
@@ -55,7 +81,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
           setLoadingMessages(false);
         }
       });
-  }, [activeRoom, token, searchQuery]);
+  }, [activeRoom, token, searchQuery, cacheMessages]);
 
   useEffect(() => {
     localStorage.setItem('appearOffline', appearOffline);
@@ -83,14 +109,9 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   }, [token]);
 
   useEffect(() => {
+    loadCachedMessages(activeRoom);
     fetchMessages();
-  }, [fetchMessages]);
-
-  useEffect(() => {
-    if (!token || !activeRoom) return;
-    const timer = setInterval(() => fetchMessages(1), 60000);
-    return () => clearInterval(timer);
-  }, [token, activeRoom]);
+  }, [fetchMessages, loadCachedMessages, activeRoom]);
 
   useEffect(() => {
     if (!socket) return;
@@ -100,15 +121,36 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       status: appearOffline ? 'offline' : 'online',
     });
     socket.on('connect', () => { fetchMessages(); });
-    socket.on('new_message', (msg) => setMessages((prev) => [...prev, msg]));
-    socket.on('edit_message', (msg) => setMessages((prev) => prev.map((m) => m.id === msg.id ? msg : m)));
-    socket.on('delete_message', ({ id }) => setMessages((prev) => prev.filter((m) => m.id !== id)));
+    socket.on('new_message', (msg) => {
+      setMessages((prev) => {
+        const next = [...prev, msg];
+        cacheMessages(activeRoom, next);
+        return next;
+      });
+    });
+    socket.on('edit_message', (msg) => {
+      setMessages((prev) => {
+        const next = prev.map((m) => m.id === msg.id ? msg : m);
+        cacheMessages(activeRoom, next);
+        return next;
+      });
+    });
+    socket.on('delete_message', ({ id }) => {
+      setMessages((prev) => {
+        const next = prev.filter((m) => m.id !== id);
+        cacheMessages(activeRoom, next);
+        return next;
+      });
+    });
     socket.on('message_react', (msg) => setMessages((prev) => prev.map((m) => m.id === msg.id ? msg : m)));
     socket.on('new_room', (room) => setRooms((prev) => [...prev, room]));
     socket.on('room_updated', (room) => setRooms((prev) => prev.map((r) => r.id === room.id ? room : r)));
     socket.on('room_deleted', ({ id }) => setRooms((prev) => prev.filter((r) => r.id !== id)));
     socket.on('room_cleared', ({ id }) => {
-      if (id === activeRoom) setMessages([]);
+      if (id === activeRoom) {
+        setMessages([]);
+        cacheMessages(id, []);
+      }
     });
     socket.on('system_message', (msg) => setMessages((prev) => [...prev, { ...msg, id: Date.now() + Math.random(), type: 'system' }]));
     socket.on('online_users', (users) => setOnlineUsers(users));
@@ -173,7 +215,10 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok && activeRoom === roomId) setActiveRoom(1);
+      if (res.ok) {
+        localStorage.removeItem(`messages_${roomId}`);
+        if (activeRoom === roomId) setActiveRoom(1);
+      }
     } catch { alert('Failed to delete'); }
   };
 
@@ -184,6 +229,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
+      localStorage.removeItem(`messages_${roomId}`);
     } catch { alert('Failed to clear chat'); }
   };
 
@@ -449,7 +495,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
             <h2>{currentRoom?.name || 'General'}</h2>
             <p>{currentRoom?.type === 'dm' ? 'Direct message' : `${onlineCount} ${onlineCount === 1 ? 'member' : 'members'}`}</p>
           </div>
-          {isAdmin && currentRoom?.id !== 1 && currentRoom?.type === 'channel' && (
+          {currentRoom?.id !== 1 && currentRoom?.type === 'channel' && (
             <button className="header-delete-btn" onClick={() => handleDeleteRoom(currentRoom.id)} title="Delete Channel">🗑️</button>
           )}
           <form className="search-bar" onSubmit={handleSearch}>
@@ -549,7 +595,7 @@ function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, 
       {showMenu && (
         <div className="room-context-menu" onMouseLeave={() => setShowMenu(false)} onClick={(e) => e.stopPropagation()}>
           {!dm && !noMenu && isAdmin && <button onClick={() => { setShowMenu(false); onStartEdit(); }}>✏️ Rename</button>}
-          {!noMenu && isAdmin && <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>}
+          {!noMenu && <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>}
           {!dm && <button onClick={() => { setShowMenu(false); onInvite(); }}>🔗 Copy Invite Link</button>}
           <button onClick={() => { setShowMenu(false); onClearChat(); }}>🧹 Clear Chat</button>
         </div>

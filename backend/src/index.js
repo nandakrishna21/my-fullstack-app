@@ -177,9 +177,6 @@ app.delete('/api/rooms/:id', authenticateToken, async (req, res) => {
     if (Number(id) === 1) {
       return res.status(400).json({ error: 'Cannot delete General channel' });
     }
-    if (!req.user.is_admin) {
-      return res.status(403).json({ error: 'Only admins can delete channels' });
-    }
     const result = await pool.query(
       'DELETE FROM rooms WHERE id = $1 RETURNING id',
       [id]
