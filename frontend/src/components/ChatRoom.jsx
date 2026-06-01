@@ -17,6 +17,8 @@ function hashColor(str) {
 function ChatRoom({ user, token, socket, onLogout }) {
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/messages`, {
@@ -46,10 +48,20 @@ function ChatRoom({ user, token, socket, onLogout }) {
       setOnlineUsers(users);
     });
 
+    socket.on('user_typing', (username) => {
+      setTypingUsers((prev) => prev.includes(username) ? prev : [...prev, username]);
+    });
+
+    socket.on('user_stop_typing', (username) => {
+      setTypingUsers((prev) => prev.filter((u) => u !== username));
+    });
+
     return () => {
       socket.off('new_message');
       socket.off('system_message');
       socket.off('online_users');
+      socket.off('user_typing');
+      socket.off('user_stop_typing');
     };
   }, [socket, user]);
 
@@ -60,37 +72,72 @@ function ChatRoom({ user, token, socket, onLogout }) {
         username: user.username,
         content,
       });
+      socket.emit('stop_typing', user.username);
+    }
+  };
+
+  const handleTyping = () => {
+    if (socket) {
+      socket.emit('typing', user.username);
+    }
+  };
+
+  const handleStopTyping = () => {
+    if (socket) {
+      socket.emit('stop_typing', user.username);
     }
   };
 
   const userColor = hashColor(user.username);
   const onlineCount = onlineUsers.length;
 
+  const typingText = typingUsers.length > 0
+    ? typingUsers.length === 1
+      ? `${typingUsers[0]} is typing...`
+      : `${typingUsers.join(', ')} are typing...`
+    : '';
+
   return (
     <div className="chat-layout">
       <div className="sidebar">
-        <div className="user-profile">
-          <div className="avatar" style={{ background: userColor }}>{user.username[0].toUpperCase()}</div>
-          <div>
-            <div className="username">{user.username}</div>
-            <div className="status">● Online</div>
+        <div className="sidebar-section">
+          <div className="user-profile" onClick={() => setShowUserMenu(!showUserMenu)} style={{ cursor: 'pointer', position: 'relative' }}>
+            <div className="avatar" style={{ background: userColor }}>{user.username[0].toUpperCase()}</div>
+            <div>
+              <div className="username">{user.username}</div>
+              <div className="status">● Online</div>
+            </div>
+            {showUserMenu && (
+              <div className="user-menu">
+                <div className="user-menu-header">
+                  <div className="user-menu-avatar" style={{ background: userColor }}>{user.username[0].toUpperCase()}</div>
+                  <div>
+                    <div className="user-menu-name">{user.username}</div>
+                    <div className="user-menu-status">Connected</div>
+                  </div>
+                </div>
+                <div className="user-menu-divider" />
+                <button className="user-menu-item" onClick={onLogout}>
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         </div>
-        <h3>Online ({onlineCount})</h3>
-        <ul className="online-users">
-          {onlineUsers.map((u, i) => (
-            <li key={i}>
-              <div className="user-avatar-sm" style={{ background: hashColor(u.username) }}>
-                {u.username[0].toUpperCase()}
-              </div>
-              <span>{u.username}</span>
-              <span className="online-dot" />
-            </li>
-          ))}
-        </ul>
-        <button className="logout-btn" onClick={onLogout}>
-          Sign out
-        </button>
+        <div className="sidebar-section">
+          <h3>Online — {onlineCount}</h3>
+          <ul className="online-users">
+            {onlineUsers.map((u, i) => (
+              <li key={i}>
+                <div className="user-avatar-sm" style={{ background: hashColor(u.username) }}>
+                  {u.username[0].toUpperCase()}
+                </div>
+                <span>{u.username}</span>
+                <span className="online-dot" />
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
       <div className="chat-main">
         <div className="chat-header">
@@ -101,7 +148,13 @@ function ChatRoom({ user, token, socket, onLogout }) {
           </div>
         </div>
         <MessageList messages={messages} currentUser={user.username} />
-        <MessageInput onSend={handleSend} />
+        {typingText && (
+          <div className="typing-indicator">
+            <span className="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+            {typingText}
+          </div>
+        )}
+        <MessageInput onSend={handleSend} onTyping={handleTyping} onStopTyping={handleStopTyping} />
       </div>
     </div>
   );

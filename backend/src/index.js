@@ -59,6 +59,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('typing', () => {
+    socket.broadcast.emit('user_typing', socket.userData?.username);
+  });
+
+  socket.on('stop_typing', () => {
+    socket.broadcast.emit('user_stop_typing', socket.userData?.username);
+  });
+
   socket.on('disconnect', () => {
     const user = onlineUsers.get(socket.id);
     if (user) {

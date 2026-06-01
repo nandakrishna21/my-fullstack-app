@@ -10,6 +10,34 @@ function hashColor(str) {
   return COLORS[Math.abs(hash) % COLORS.length];
 }
 
+function formatDate(dateStr) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now - date;
+  const oneDay = 86400000;
+
+  if (diff < oneDay && date.getDate() === now.getDate()) {
+    return 'Today';
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear()) {
+    return 'Yesterday';
+  }
+
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function shouldShowDateSeparator(prevMsg, currentMsg) {
+  if (!prevMsg) return true;
+  const prev = new Date(prevMsg.created_at).toDateString();
+  const curr = new Date(currentMsg.created_at).toDateString();
+  return prev !== curr;
+}
+
 function MessageList({ messages, currentUser }) {
   const bottomRef = useRef(null);
 
@@ -17,9 +45,22 @@ function MessageList({ messages, currentUser }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  if (messages.length === 0) {
+    return (
+      <div className="messages">
+        <div className="empty-state">
+          <div className="empty-icon">💬</div>
+          <h3>Welcome to ChatApp!</h3>
+          <p>Start a conversation by sending a message below.</p>
+        </div>
+        <div ref={bottomRef} />
+      </div>
+    );
+  }
+
   return (
     <div className="messages">
-      {messages.map((msg) => {
+      {messages.map((msg, idx) => {
         if (msg.type === 'system') {
           return (
             <div key={msg.id} className="message system">
@@ -28,20 +69,29 @@ function MessageList({ messages, currentUser }) {
           );
         }
 
+        const showDateSep = shouldShowDateSeparator(messages[idx - 1], msg);
         const isOwn = msg.username === currentUser;
+
         return (
-          <div key={msg.id} className={`message ${isOwn ? 'own' : 'other'}`}>
-            {!isOwn && (
-              <div className="msg-sender">
-                <div className="sender-avatar" style={{ background: hashColor(msg.username) }}>
-                  {msg.username[0].toUpperCase()}
-                </div>
-                <span className="sender-name">{msg.username}</span>
+          <div key={msg.id}>
+            {showDateSep && (
+              <div className="date-separator">
+                <span>{formatDate(msg.created_at)}</span>
               </div>
             )}
-            <div className="msg-content">{msg.content}</div>
-            <div className="msg-time">
-              {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <div className={`message ${isOwn ? 'own' : 'other'}`}>
+              {!isOwn && (
+                <div className="msg-sender">
+                  <div className="sender-avatar" style={{ background: hashColor(msg.username) }}>
+                    {msg.username[0].toUpperCase()}
+                  </div>
+                  <span className="sender-name">{msg.username}</span>
+                </div>
+              )}
+              <div className="msg-content">{msg.content}</div>
+              <div className="msg-time">
+                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
             </div>
           </div>
         );

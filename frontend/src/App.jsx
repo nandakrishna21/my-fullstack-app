@@ -9,6 +9,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [socket, setSocket] = useState(null);
+  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
@@ -16,6 +17,7 @@ function App() {
     if (savedToken && savedUser) {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
+      setConnecting(true);
     }
   }, []);
 
@@ -23,6 +25,15 @@ function App() {
     if (!token) return;
 
     const newSocket = io(API_URL || undefined);
+
+    newSocket.on('connect', () => {
+      setConnecting(false);
+    });
+
+    newSocket.on('disconnect', () => {
+      setConnecting(true);
+    });
+
     setSocket(newSocket);
 
     return () => {
@@ -33,6 +44,7 @@ function App() {
   const handleAuth = (userData, authToken) => {
     setUser(userData);
     setToken(authToken);
+    setConnecting(true);
     localStorage.setItem('token', authToken);
     localStorage.setItem('user', JSON.stringify(userData));
   };
@@ -44,12 +56,26 @@ function App() {
     setUser(null);
     setToken(null);
     setSocket(null);
+    setConnecting(false);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
 
   if (!user) {
     return <LoginForm onAuth={handleAuth} />;
+  }
+
+  if (connecting) {
+    return (
+      <div className="connecting-screen">
+        <div className="connecting-card">
+          <div className="connecting-logo">⚡</div>
+          <h2>Welcome back, <span>{user.username}</span></h2>
+          <p>Connecting to chat server...</p>
+          <div className="connecting-bar"><div className="connecting-bar-fill" /></div>
+        </div>
+      </div>
+    );
   }
 
   return (
