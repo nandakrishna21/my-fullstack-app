@@ -297,6 +297,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
                 onCancelEdit={() => setEditingRoomId(null)}
                 onDelete={() => handleDeleteRoom(room.id)}
                 prefix="#"
+                noMenu={room.id === 1}
               />
             ))}
           </ul>
@@ -411,7 +412,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   );
 }
 
-function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, onEditChange, onSave, onCancelEdit, onDelete, prefix, dm, online, hashColor }) {
+function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, onEditChange, onSave, onCancelEdit, onDelete, prefix, dm, online, hashColor, noMenu }) {
   const [showMenu, setShowMenu] = useState(false);
 
   if (editing) {
@@ -442,8 +443,10 @@ function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, 
         <span className="room-hash">{prefix || '#'}</span>
       )}
       <span className="room-name">{room.name}</span>
-      <button className="room-item-menu" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>⋯</button>
-      {showMenu && (
+      {!noMenu && (
+        <button className="room-item-menu" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>⋯</button>
+      )}
+      {!noMenu && showMenu && (
         <div className="room-context-menu" onMouseLeave={() => setShowMenu(false)} onClick={(e) => e.stopPropagation()}>
           {!dm && <button onClick={() => { setShowMenu(false); onStartEdit(); }}>✏️ Rename</button>}
           <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>
