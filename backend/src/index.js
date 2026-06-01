@@ -156,6 +156,18 @@ app.put('/api/rooms/:id', authenticateToken, async (req, res) => {
   }
 });
 
+app.delete('/api/rooms/:id/messages', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM messages WHERE room_id = $1', [id]);
+    io.emit('room_cleared', { id: Number(id) });
+    res.json({ message: 'Chat cleared' });
+  } catch (err) {
+    console.error('Clear room error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.delete('/api/rooms/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;

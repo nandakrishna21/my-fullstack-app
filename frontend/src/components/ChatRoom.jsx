@@ -73,13 +73,16 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
     socket.on('new_room', (room) => setRooms((prev) => [...prev, room]));
     socket.on('room_updated', (room) => setRooms((prev) => prev.map((r) => r.id === room.id ? room : r)));
     socket.on('room_deleted', ({ id }) => setRooms((prev) => prev.filter((r) => r.id !== id)));
+    socket.on('room_cleared', ({ id }) => {
+      if (id === activeRoom) setMessages([]);
+    });
     socket.on('system_message', (msg) => setMessages((prev) => [...prev, { ...msg, id: Date.now() + Math.random(), type: 'system' }]));
     socket.on('online_users', (users) => setOnlineUsers(users));
     socket.on('user_typing', (username) => setTypingUsers((prev) => prev.includes(username) ? prev : [...prev, username]));
     socket.on('user_stop_typing', (username) => setTypingUsers((prev) => prev.filter((u) => u !== username)));
     return () => {
       socket.off('new_message'); socket.off('edit_message'); socket.off('delete_message');
-      socket.off('message_react'); socket.off('new_room'); socket.off('room_updated'); socket.off('room_deleted'); socket.off('system_message');
+      socket.off('message_react'); socket.off('new_room'); socket.off('room_updated'); socket.off('room_deleted'); socket.off('room_cleared'); socket.off('system_message');
       socket.off('online_users'); socket.off('user_typing'); socket.off('user_stop_typing');
     };
   }, [socket, user]);
@@ -138,6 +141,16 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       });
       if (res.ok && activeRoom === roomId) setActiveRoom(1);
     } catch { alert('Failed to delete'); }
+  };
+
+  const handleClearChat = async (roomId) => {
+    if (!confirm('Clear all messages in this chat?')) return;
+    try {
+      await fetch(`${API_URL}/api/rooms/${roomId}/messages`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch { alert('Failed to clear chat'); }
   };
 
   const handleSend = (content) => {
@@ -296,6 +309,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
                 onSave={() => handleRenameRoom(room.id)}
                 onCancelEdit={() => setEditingRoomId(null)}
                 onDelete={() => handleDeleteRoom(room.id)}
+                onClearChat={() => handleClearChat(room.id)}
                 prefix="#"
                 noMenu={room.id === 1}
               />
@@ -326,6 +340,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
                 active={room.id === activeRoom}
                 onSelect={() => switchRoom(room.id)}
                 onDelete={() => handleDeleteRoom(room.id)}
+                onClearChat={() => handleClearChat(room.id)}
                 dm
                 online={onlineUsernames.has(room.name)}
                 hashColor={hashColor}
@@ -412,7 +427,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   );
 }
 
-function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, onEditChange, onSave, onCancelEdit, onDelete, prefix, dm, online, hashColor, noMenu }) {
+function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, onEditChange, onSave, onCancelEdit, onDelete, onClearChat, prefix, dm, online, hashColor, noMenu }) {
   const [showMenu, setShowMenu] = useState(false);
 
   if (editing) {
@@ -443,13 +458,12 @@ function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, 
         <span className="room-hash">{prefix || '#'}</span>
       )}
       <span className="room-name">{room.name}</span>
-      {!noMenu && (
-        <button className="room-item-menu" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>⋯</button>
-      )}
-      {!noMenu && showMenu && (
+      <button className="room-item-menu" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>⋯</button>
+      {showMenu && (
         <div className="room-context-menu" onMouseLeave={() => setShowMenu(false)} onClick={(e) => e.stopPropagation()}>
-          {!dm && <button onClick={() => { setShowMenu(false); onStartEdit(); }}>✏️ Rename</button>}
-          <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>
+          {!dm && !noMenu && <button onClick={() => { setShowMenu(false); onStartEdit(); }}>✏️ Rename</button>}
+          {!noMenu && <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>}
+          <button onClick={() => { setShowMenu(false); onClearChat(); }}>🧹 Clear Chat</button>
         </div>
       )}
     </li>
