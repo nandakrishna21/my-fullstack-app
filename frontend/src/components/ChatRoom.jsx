@@ -20,6 +20,14 @@ function ChatRoom({ user, token, socket, onLogout, theme, onToggleTheme }) {
   const [typingUsers, setTypingUsers] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [appearOffline, setAppearOffline] = useState(() => localStorage.getItem('appearOffline') === 'true');
+
+  useEffect(() => {
+    localStorage.setItem('appearOffline', appearOffline);
+    if (socket?.connected) {
+      socket.emit('status_update', appearOffline ? 'offline' : 'online');
+    }
+  }, [appearOffline, socket]);
 
   useEffect(() => {
     fetch(`${API_URL}/api/messages`, {
@@ -35,7 +43,7 @@ function ChatRoom({ user, token, socket, onLogout, theme, onToggleTheme }) {
   useEffect(() => {
     if (!socket) return;
 
-    socket.emit('join', { id: user.id, username: user.username });
+    socket.emit('join', { id: user.id, username: user.username, status: appearOffline ? 'offline' : 'online' });
 
     socket.on('new_message', (msg) => {
       setMessages((prev) => [...prev, msg]);
@@ -139,7 +147,7 @@ function ChatRoom({ user, token, socket, onLogout, theme, onToggleTheme }) {
             <div className="avatar" style={{ background: userColor }}>{user.username[0].toUpperCase()}</div>
             <div>
               <div className="username">{user.username}</div>
-              <div className="status">● Online</div>
+              <div className="status" style={{ color: appearOffline ? 'rgba(255,255,255,0.3)' : undefined }}>{appearOffline ? '● Offline' : '● Online'}</div>
             </div>
             {showUserMenu && (
               <div className="user-menu">
@@ -147,9 +155,15 @@ function ChatRoom({ user, token, socket, onLogout, theme, onToggleTheme }) {
                   <div className="user-menu-avatar" style={{ background: userColor }}>{user.username[0].toUpperCase()}</div>
                   <div>
                     <div className="user-menu-name">{user.username}</div>
-                    <div className="user-menu-status">Connected</div>
+                    <div className="user-menu-status">{appearOffline ? 'Appearing Offline' : 'Connected'}</div>
                   </div>
                 </div>
+                <div className="user-menu-divider" />
+                <label className="user-menu-toggle" onClick={(e) => e.stopPropagation()}>
+                  <span>Appear Offline</span>
+                  <input type="checkbox" checked={appearOffline} onChange={() => setAppearOffline(!appearOffline)} />
+                  <span className="toggle-slider" />
+                </label>
                 <div className="user-menu-divider" />
                 <button className="user-menu-item" onClick={onLogout}>
                   Sign Out

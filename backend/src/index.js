@@ -94,10 +94,20 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   socket.on('join', (userData) => {
-    socket.userData = userData;
-    onlineUsers.set(socket.id, userData);
-    io.emit('online_users', Array.from(onlineUsers.values()));
+    const entry = { id: userData.id, username: userData.username, status: userData.status || 'online' };
+    socket.userData = entry;
+    onlineUsers.set(socket.id, entry);
+    io.emit('online_users', Array.from(onlineUsers.values()).filter(u => u.status === 'online'));
     io.emit('system_message', { content: `${userData.username} joined the chat` });
+  });
+
+  socket.on('status_update', (status) => {
+    const entry = onlineUsers.get(socket.id);
+    if (entry) {
+      entry.status = status;
+      onlineUsers.set(socket.id, entry);
+      io.emit('online_users', Array.from(onlineUsers.values()).filter(u => u.status === 'online'));
+    }
   });
 
   socket.on('send_message', async (data) => {
@@ -126,8 +136,10 @@ io.on('connection', (socket) => {
     const user = onlineUsers.get(socket.id);
     if (user) {
       onlineUsers.delete(socket.id);
-      io.emit('online_users', Array.from(onlineUsers.values()));
-      io.emit('system_message', { content: `${user.username} left the chat` });
+      io.emit('online_users', Array.from(onlineUsers.values()).filter(u => u.status === 'online'));
+      if (user.status === 'online') {
+        io.emit('system_message', { content: `${user.username} left the chat` });
+      }
     }
     console.log('User disconnected:', socket.id);
   });
