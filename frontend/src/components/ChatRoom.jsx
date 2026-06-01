@@ -15,10 +15,12 @@ function hashColor(str) {
 }
 
 function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, theme, onToggleTheme }) {
-  const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [rooms, setRooms] = useState([]);
-  const [activeRoom, setActiveRoom] = useState(1);
+  const [activeRoom, setActiveRoom] = useState(() => {
+    const saved = localStorage.getItem('activeRoom');
+    return saved ? Number(saved) : 1;
+  });
   const [typingUsers, setTypingUsers] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -95,11 +97,6 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       socket.emit('status_update', appearOffline ? 'offline' : 'online');
     }
   }, [appearOffline, socket]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('activeRoom');
-    if (saved) setActiveRoom(Number(saved));
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('activeRoom', activeRoom);
