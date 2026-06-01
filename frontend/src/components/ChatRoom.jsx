@@ -4,6 +4,16 @@ import MessageInput from './MessageInput.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
+const COLORS = ['#e94560', '#4ade80', '#60a5fa', '#f59e0b', '#a78bfa', '#34d399', '#fb923c', '#2dd4bf'];
+
+function hashColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return COLORS[Math.abs(hash) % COLORS.length];
+}
+
 function ChatRoom({ user, token, socket, onLogout }) {
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -53,21 +63,43 @@ function ChatRoom({ user, token, socket, onLogout }) {
     }
   };
 
+  const userColor = hashColor(user.username);
+  const onlineCount = onlineUsers.length;
+
   return (
     <div className="chat-layout">
       <div className="sidebar">
-        <h3>Online ({onlineUsers.length})</h3>
+        <div className="user-profile">
+          <div className="avatar" style={{ background: userColor }}>{user.username[0].toUpperCase()}</div>
+          <div>
+            <div className="username">{user.username}</div>
+            <div className="status">● Online</div>
+          </div>
+        </div>
+        <h3>Online ({onlineCount})</h3>
         <ul className="online-users">
           {onlineUsers.map((u, i) => (
-            <li key={i}>{u.username}</li>
+            <li key={i}>
+              <div className="user-avatar-sm" style={{ background: hashColor(u.username) }}>
+                {u.username[0].toUpperCase()}
+              </div>
+              <span>{u.username}</span>
+              <span className="online-dot" />
+            </li>
           ))}
         </ul>
         <button className="logout-btn" onClick={onLogout}>
-          Logout
+          Sign out
         </button>
       </div>
       <div className="chat-main">
-        <div className="chat-header"># general</div>
+        <div className="chat-header">
+          <div className="room-icon">#</div>
+          <div className="room-info">
+            <h2>General</h2>
+            <p>{onlineCount} {onlineCount === 1 ? 'member' : 'members'}</p>
+          </div>
+        </div>
         <MessageList messages={messages} currentUser={user.username} />
         <MessageInput onSend={handleSend} />
       </div>
