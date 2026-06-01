@@ -5,13 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
+  contents: write
 
 jobs:
   build-and-deploy:
@@ -31,9 +25,12 @@ jobs:
         env:
           VITE_BASE_URL: /my-fullstack-app/
           VITE_API_URL: https://chat-app-backend-fdhs.onrender.com
-      - uses: actions/configure-pages@v4
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./frontend/dist
-      - id: deploy
-        uses: actions/deploy-pages@v4
+      - run: |
+          cd dist
+          git init
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add --all
+          git commit -m "Deploy to gh-pages - $(date -u)"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} HEAD:gh-pages --force
+        working-directory: ./frontend
