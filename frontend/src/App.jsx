@@ -39,7 +39,7 @@ function App() {
     })
       .then((r) => r.json())
       .then((data) => {
-        if (data.id) setProfile(data);
+        if (data.id) { setProfile(data); setUser((prev) => ({ ...prev, is_admin: data.is_admin })); }
       })
       .catch(() => {});
   }, [token]);
@@ -50,7 +50,7 @@ function App() {
     newSocket.on('connect', () => setConnecting(false));
     newSocket.on('disconnect', () => setConnecting(true));
     newSocket.on('user_updated', (data) => {
-      if (data.id === user?.id) setProfile(data);
+      if (data.id === user?.id) { setProfile(data); setUser((prev) => ({ ...prev, is_admin: data.is_admin })); }
     });
     setSocket(newSocket);
     return () => { newSocket.disconnect(); };

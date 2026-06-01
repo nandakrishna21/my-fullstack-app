@@ -107,6 +107,13 @@ app.get('/api/rooms', authenticateToken, async (req, res) => {
       `SELECT * FROM rooms WHERE type = 'channel' OR (type = 'dm' AND $1 = ANY(participant_ids)) ORDER BY created_at ASC`,
       [req.user.id]
     );
+    for (const row of result.rows) {
+      if (row.type === 'channel' && !row.invite_code) {
+        const code = Math.random().toString(36).slice(2, 10);
+        await pool.query('UPDATE rooms SET invite_code = $1 WHERE id = $2', [code, row.id]);
+        row.invite_code = code;
+      }
+    }
     res.json(result.rows);
   } catch (err) {
     console.error('Fetch rooms error:', err.message);
@@ -120,9 +127,13 @@ app.post('/api/rooms', authenticateToken, async (req, res) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Room name required' });
     }
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Only admins can create channels' });
+    }
+    const inviteCode = Math.random().toString(36).slice(2, 10);
     const result = await pool.query(
-      'INSERT INTO rooms (name, type, created_by) VALUES ($1, $2, $3) RETURNING *',
-      [name.trim(), 'channel', req.user.id]
+      'INSERT INTO rooms (name, type, created_by, invite_code) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name.trim(), 'channel', req.user.id, inviteCode]
     );
     const room = result.rows[0];
     io.emit('new_room', room);
@@ -140,9 +151,12 @@ app.put('/api/rooms/:id', authenticateToken, async (req, res) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Room name required' });
     }
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Only admins can rename channels' });
+    }
     const result = await pool.query(
-      'UPDATE rooms SET name = $1 WHERE id = $2 AND (type = $3 OR created_by = $4) RETURNING *',
-      [name.trim(), id, 'channel', req.user.id]
+      'UPDATE rooms SET name = $1 WHERE id = $2 AND type = $3 RETURNING *',
+      [name.trim(), id, 'channel']
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Room not found' });
@@ -152,6 +166,30 @@ app.put('/api/rooms/:id', authenticateToken, async (req, res) => {
     res.json(room);
   } catch (err) {
     console.error('Update room error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/api/rooms/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (Number(id) === 1) {
+      return res.status(400).json({ error: 'Cannot delete General channel' });
+    }
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Only admins can delete channels' });
+    }
+    const result = await pool.query(
+      'DELETE FROM rooms WHERE id = $1 RETURNING id',
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    io.emit('room_deleted', { id: Number(id) });
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Delete room error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -174,10 +212,10 @@ app.delete('/api/rooms/:id', authenticateToken, async (req, res) => {
     if (Number(id) === 1) {
       return res.status(400).json({ error: 'Cannot delete General channel' });
     }
-    const result = await pool.query(
-      'DELETE FROM rooms WHERE id = $1 AND (type = $2 OR created_by = $3) RETURNING id',
-      [id, 'channel', req.user.id]
-    );
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Only admins can delete channels' });
+    }
+    const result = await pool.query('DELETE FROM rooms WHERE id = $1 RETURNING id', [id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Room not found' });
     }
@@ -185,6 +223,30 @@ app.delete('/api/rooms/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete room error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/rooms/:id/invite', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT invite_code FROM rooms WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Room not found' });
+    res.json({ inviteCode: result.rows[0].invite_code });
+  } catch (err) {
+    console.error('Invite error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/rooms/join/:code', authenticateToken, async (req, res) => {
+  try {
+    const { code } = req.params;
+    const result = await pool.query('SELECT * FROM rooms WHERE invite_code = $1', [code]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Invalid invite code' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Join error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -223,7 +285,7 @@ app.post('/api/conversations', authenticateToken, async (req, res) => {
 app.get('/api/users', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, avatar_url, display_name FROM users WHERE id != $1 ORDER BY username ASC',
+      'SELECT id, username, avatar_url, display_name, is_admin FROM users WHERE id != $1 ORDER BY username ASC',
       [req.user.id]
     );
     res.json(result.rows);
@@ -301,7 +363,7 @@ app.post('/api/messages/:id/react', authenticateToken, async (req, res) => {
 app.get('/api/users/profile', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, avatar_url, display_name, bio, created_at FROM users WHERE id = $1',
+      'SELECT id, username, avatar_url, display_name, bio, is_admin, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
     if (result.rows.length === 0) {
@@ -350,6 +412,25 @@ app.post('/api/users/avatar', authenticateToken, (req, res) => {
       res.status(500).json({ error: 'Server error' });
     }
   });
+});
+
+app.post('/api/users/promote', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Only admins can promote users' });
+    }
+    const { userId } = req.body;
+    const result = await pool.query(
+      "UPDATE users SET is_admin = TRUE WHERE id = $1 RETURNING id, username, avatar_url, display_name, bio, is_admin, created_at",
+      [userId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    io.emit('user_updated', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Promote error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.get('/api/health', (_req, res) => {

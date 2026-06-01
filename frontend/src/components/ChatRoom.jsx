@@ -29,6 +29,8 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const [newRoomName, setNewRoomName] = useState('');
   const [showNewChat, setShowNewChat] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
+  const [showJoinChannel, setShowJoinChannel] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
   const searchInputRef = useRef(null);
 
   useEffect(() => {
@@ -153,6 +155,46 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
     } catch { alert('Failed to clear chat'); }
   };
 
+  const handleCopyInvite = async (roomId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/rooms/${roomId}/invite`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.inviteCode) {
+        const link = `${window.location.origin}${import.meta.env.VITE_BASE_URL || '/'}?join=${data.inviteCode}`;
+        await navigator.clipboard.writeText(link);
+        alert('Invite link copied!');
+      }
+    } catch { alert('Failed to get invite link'); }
+  };
+
+  const handleJoinChannel = async () => {
+    if (!joinCode.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/api/rooms/join/${joinCode.trim()}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) { setActiveRoom(data.id); setJoinCode(''); setShowJoinChannel(false); }
+      else alert(data.error || 'Invalid code');
+    } catch { alert('Failed to join'); }
+  };
+
+  const handlePromote = async (userId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/users/promote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (res.ok) alert('User promoted to admin');
+      else alert(data.error || 'Failed to promote');
+    } catch { alert('Failed to promote'); }
+  };
+
   const handleSend = (content) => {
     if (socket) {
       socket.emit('send_message', { roomId: activeRoom, userId: user.id, username: user.username, content });
@@ -241,6 +283,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const displayName = profile?.display_name || user.username;
   const displayAvatar = profile?.avatar_url ? `${API_URL}${profile.avatar_url}` : null;
   const userColor = hashColor(user.username);
+  const isAdmin = profile?.is_admin || user?.is_admin;
   const onlineCount = onlineUsers.length;
   const currentRoom = rooms.find((r) => r.id === activeRoom);
   const channels = rooms.filter((r) => r.type === 'channel');
@@ -259,7 +302,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
               {!displayAvatar && displayName[0].toUpperCase()}
             </div>
             <div>
-              <div className="username">{displayName}</div>
+              <div className="username">{displayName} {isAdmin && <span className="admin-badge">Admin</span>}</div>
               <div className="status" style={{ color: appearOffline ? 'rgba(255,255,255,0.3)' : undefined }}>
                 {appearOffline ? '● Offline' : '● Online'}
               </div>
@@ -293,7 +336,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         <div className="sidebar-section rooms-section">
           <div className="rooms-header">
             <h3>Channels</h3>
-            <button className="room-add-btn" onClick={() => setShowCreateRoom(true)} title="Create channel">＋</button>
+            {isAdmin && <button className="room-add-btn" onClick={() => setShowCreateRoom(true)} title="Create channel">＋</button>}
           </div>
           <ul className="room-list">
             {channels.map((room) => (
@@ -310,8 +353,10 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
                 onCancelEdit={() => setEditingRoomId(null)}
                 onDelete={() => handleDeleteRoom(room.id)}
                 onClearChat={() => handleClearChat(room.id)}
+                onInvite={() => handleCopyInvite(room.id)}
                 prefix="#"
                 noMenu={room.id === 1}
+                isAdmin={isAdmin}
               />
             ))}
           </ul>
@@ -322,6 +367,17 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
               <div className="create-room-actions">
                 <button onClick={() => setShowCreateRoom(false)}>Cancel</button>
                 <button onClick={handleCreateRoom} disabled={!newRoomName.trim()}>Create</button>
+              </div>
+            </div>
+          )}
+          <button className="join-channel-btn" onClick={() => setShowJoinChannel(true)}>➕ Join Channel</button>
+          {showJoinChannel && (
+            <div className="join-channel-form">
+              <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="Paste invite code"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleJoinChannel(); if (e.key === 'Escape') setShowJoinChannel(false); }} autoFocus />
+              <div className="join-channel-actions">
+                <button onClick={() => { setShowJoinChannel(false); setJoinCode(''); }}>Cancel</button>
+                <button onClick={handleJoinChannel} disabled={!joinCode.trim()}>Join</button>
               </div>
             </div>
           )}
@@ -360,6 +416,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
                 </div>
                 <span>{u.display_name || u.username}</span>
                 <span className="online-dot" />
+                {isAdmin && u.id !== user.id && <button className="promote-btn" onClick={() => handlePromote(u.id)} title="Promote to Admin">👑</button>}
               </li>
             ))}
           </ul>
@@ -415,6 +472,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
                       <div className="newchat-username">@{u.username}</div>
                     </div>
                     {onlineUsernames.has(u.username) && <span className="online-dot newchat-online" />}
+                    {isAdmin && u.id !== user.id && <button className="promote-btn" onClick={(e) => { e.stopPropagation(); handlePromote(u.id); }} title="Promote to Admin">👑</button>}
                   </div>
                 ))}
                 {allUsers.length === 0 && <p className="newchat-empty">No other users found</p>}
@@ -427,7 +485,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   );
 }
 
-function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, onEditChange, onSave, onCancelEdit, onDelete, onClearChat, prefix, dm, online, hashColor, noMenu }) {
+function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, onEditChange, onSave, onCancelEdit, onDelete, onClearChat, onInvite, prefix, dm, online, hashColor, noMenu, isAdmin }) {
   const [showMenu, setShowMenu] = useState(false);
 
   if (editing) {
@@ -461,8 +519,9 @@ function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, 
       <button className="room-item-menu" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>⋯</button>
       {showMenu && (
         <div className="room-context-menu" onMouseLeave={() => setShowMenu(false)} onClick={(e) => e.stopPropagation()}>
-          {!dm && !noMenu && <button onClick={() => { setShowMenu(false); onStartEdit(); }}>✏️ Rename</button>}
-          {!noMenu && <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>}
+          {!dm && !noMenu && isAdmin && <button onClick={() => { setShowMenu(false); onStartEdit(); }}>✏️ Rename</button>}
+          {!noMenu && isAdmin && <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>}
+          {!dm && <button onClick={() => { setShowMenu(false); onInvite(); }}>🔗 Copy Invite Link</button>}
           <button onClick={() => { setShowMenu(false); onClearChat(); }}>🧹 Clear Chat</button>
         </div>
       )}
