@@ -58,7 +58,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
     } catch {}
   }, []);
 
-  const fetchMessages = useCallback((retries = 3) => {
+  const fetchMessages = useCallback((retries = 0) => {
     if (!activeRoom || !token) return;
     roomRef.current = activeRoom;
     const fetchId = ++fetchRef.current;
@@ -80,14 +80,9 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         }
         setLoadingMessages(false);
       })
-      .catch((err) => {
+      .catch(() => {
         if (fetchId !== fetchRef.current) return;
-        console.error('Fetch messages failed:', err);
-        if (retries > 0) {
-          setTimeout(() => fetchMessages(retries - 1), 3000);
-        } else {
-          setLoadingMessages(false);
-        }
+        setTimeout(() => fetchMessages(retries + 1), Math.min(3000 + retries * 1000, 30000));
       });
   }, [activeRoom, token, searchQuery, cacheMessages]);
 
