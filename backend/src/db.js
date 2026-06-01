@@ -27,6 +27,18 @@ export async function initDB() {
       file_size INTEGER,
       created_at TIMESTAMP DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS files (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      username VARCHAR(50) NOT NULL,
+      file_url VARCHAR(500) NOT NULL,
+      file_name VARCHAR(255) NOT NULL,
+      file_type VARCHAR(100) NOT NULL,
+      file_size INTEGER NOT NULL,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
   `);
   console.log('Database tables initialized');
 }

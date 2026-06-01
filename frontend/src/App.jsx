@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import LoginForm from './components/LoginForm.jsx';
 import ChatRoom from './components/ChatRoom.jsx';
+import FileGallery from './components/FileGallery.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -11,6 +12,7 @@ function App() {
   const [socket, setSocket] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [view, setView] = useState('chat');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -90,7 +92,11 @@ function App() {
 
   return (
     <div className="container">
-      <ChatRoom user={user} token={token} socket={socket} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
+      {view === 'chat' ? (
+        <ChatRoom user={user} token={token} socket={socket} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} onNavigate={setView} />
+      ) : (
+        <FileGallery user={user} token={token} onBack={() => setView('chat')} />
+      )}
     </div>
   );
 }
