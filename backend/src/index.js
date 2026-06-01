@@ -83,9 +83,13 @@ app.get('/api/messages', authenticateToken, async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
-    console.error('Fetch messages error:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Fetch messages error:', err.message);
+    res.json([]);
   }
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 const onlineUsers = new Map();
