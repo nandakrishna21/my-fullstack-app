@@ -27,6 +27,8 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
   const searchInputRef = useRef(null);
 
   useEffect(() => {
@@ -94,14 +96,20 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         body: JSON.stringify({ name: newRoomName.trim() }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setActiveRoom(data.id);
-        setNewRoomName('');
-        setShowCreateRoom(false);
-      }
-    } catch (err) {
-      alert('Failed to create room');
-    }
+      if (res.ok) { setActiveRoom(data.id); setNewRoomName(''); setShowCreateRoom(false); }
+    } catch (err) { alert('Failed to create room'); }
+  };
+
+  const handleStartConversation = async (targetUserId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/conversations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: targetUserId }),
+      });
+      const data = await res.json();
+      if (res.ok) { setActiveRoom(data.id); setShowNewChat(false); }
+    } catch (err) { alert('Failed to start conversation'); }
   };
 
   const handleSend = (content) => {
@@ -117,9 +125,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch(`${API_URL}/api/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -129,17 +135,13 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
           fileUrl: data.url, fileName: data.name, fileType: data.type, fileSize: data.size,
         });
       }
-    } catch (err) {
-      alert('Upload failed: ' + err.message);
-    } finally {
-      setUploading(false);
-    }
+    } catch (err) { alert('Upload failed: ' + err.message); }
+    finally { setUploading(false); }
   };
 
   const handleEdit = async (msgId, newContent) => {
     const res = await fetch(`${API_URL}/api/messages/${msgId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ content: newContent }),
     });
     if (!res.ok) alert('Failed to edit message');
@@ -148,16 +150,14 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const handleDelete = async (msgId) => {
     if (!confirm('Delete this message?')) return;
     const res = await fetch(`${API_URL}/api/messages/${msgId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) alert('Failed to delete message');
   };
 
   const handleReact = async (msgId, emoji) => {
     await fetch(`${API_URL}/api/messages/${msgId}/react`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ emoji }),
     });
   };
@@ -187,14 +187,27 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       .catch(console.error);
   };
 
+  const openNewChat = () => {
+    fetch(`${API_URL}/api/users`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setAllUsers(data); })
+      .catch(console.error);
+    setShowNewChat(true);
+  };
+
   const displayName = profile?.display_name || user.username;
   const displayAvatar = profile?.avatar_url ? `${API_URL}${profile.avatar_url}` : null;
   const userColor = hashColor(user.username);
   const onlineCount = onlineUsers.length;
   const currentRoom = rooms.find((r) => r.id === activeRoom);
+  const channels = rooms.filter((r) => r.type === 'channel');
+  const dms = rooms.filter((r) => r.type === 'dm');
   const typingText = typingUsers.length > 0
     ? typingUsers.length === 1 ? `${typingUsers[0]} is typing...` : `${typingUsers.join(', ')} are typing...`
     : '';
+  const onlineUsernames = new Set(onlineUsers.map((u) => u.username));
 
   return (
     <div className="chat-layout">
@@ -242,7 +255,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
             <button className="room-add-btn" onClick={() => setShowCreateRoom(true)} title="Create channel">＋</button>
           </div>
           <ul className="room-list">
-            {rooms.map((room) => (
+            {channels.map((room) => (
               <li key={room.id} className={`room-item ${room.id === activeRoom ? 'active' : ''}`} onClick={() => switchRoom(room.id)}>
                 <span className="room-hash">#</span>
                 <span className="room-name">{room.name}</span>
@@ -251,19 +264,36 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
           </ul>
           {showCreateRoom && (
             <div className="create-room-form">
-              <input
-                value={newRoomName}
-                onChange={(e) => setNewRoomName(e.target.value)}
-                placeholder="Channel name"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateRoom(); if (e.key === 'Escape') setShowCreateRoom(false); }}
-                autoFocus
-              />
+              <input value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} placeholder="Channel name"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateRoom(); if (e.key === 'Escape') setShowCreateRoom(false); }} autoFocus />
               <div className="create-room-actions">
                 <button onClick={() => setShowCreateRoom(false)}>Cancel</button>
                 <button onClick={handleCreateRoom} disabled={!newRoomName.trim()}>Create</button>
               </div>
             </div>
           )}
+        </div>
+
+        <div className="sidebar-section rooms-section">
+          <div className="rooms-header">
+            <h3>Direct Messages</h3>
+            <button className="room-add-btn" onClick={openNewChat} title="New conversation">✉</button>
+          </div>
+          <ul className="room-list">
+            {dms.map((room) => {
+              const otherId = room.participant_ids?.find((id) => id !== user.id);
+              return (
+                <li key={room.id} className={`room-item dm-item ${room.id === activeRoom ? 'active' : ''}`} onClick={() => switchRoom(room.id)}>
+                  <div className="dm-avatar-sm" style={{ background: hashColor(room.name) }}>
+                    {room.name[0].toUpperCase()}
+                    {onlineUsernames.has(room.name) && <span className="dm-online-dot" />}
+                  </div>
+                  <span className="room-name">{room.name}</span>
+                </li>
+              );
+            })}
+            {dms.length === 0 && <li className="room-empty">No conversations yet</li>}
+          </ul>
         </div>
 
         <div className="sidebar-section">
@@ -284,10 +314,10 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
 
       <div className="chat-main">
         <div className="chat-header">
-          <div className="room-icon">#</div>
+          <div className="room-icon">{currentRoom?.type === 'dm' ? '@' : '#'}</div>
           <div className="room-info">
             <h2>{currentRoom?.name || 'General'}</h2>
-            <p>{onlineCount} {onlineCount === 1 ? 'member' : 'members'}</p>
+            <p>{currentRoom?.type === 'dm' ? 'Direct message' : `${onlineCount} ${onlineCount === 1 ? 'member' : 'members'}`}</p>
           </div>
           <form className="search-bar" onSubmit={handleSearch}>
             <input ref={searchInputRef} type="text" placeholder="Search messages..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
@@ -311,6 +341,34 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       {showProfileModal && (
         <ProfileModal user={user} token={token} profile={profile} onUpdate={onProfileUpdate} onClose={() => setShowProfileModal(false)} />
       )}
+
+      {showNewChat && (
+        <div className="modal-overlay" onClick={() => setShowNewChat(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>New Conversation</h2>
+              <button className="modal-close" onClick={() => setShowNewChat(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="newchat-list">
+                {allUsers.map((u) => (
+                  <div key={u.id} className="newchat-user" onClick={() => handleStartConversation(u.id)}>
+                    <div className="newchat-avatar" style={{ background: u.avatar_url ? `url(${API_URL}${u.avatar_url}) center/cover` : hashColor(u.username) }}>
+                      {!u.avatar_url && (u.display_name?.[0]?.toUpperCase() || u.username[0].toUpperCase())}
+                    </div>
+                    <div>
+                      <div className="newchat-name">{u.display_name || u.username}</div>
+                      <div className="newchat-username">@{u.username}</div>
+                    </div>
+                    {onlineUsernames.has(u.username) && <span className="online-dot newchat-online" />}
+                  </div>
+                ))}
+                {allUsers.length === 0 && <p className="newchat-empty">No other users found</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -326,8 +384,7 @@ function ProfileModal({ user, token, profile, onUpdate, onClose }) {
     setSaving(true);
     try {
       const res = await fetch(`${API_URL}/api/users/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ display_name: displayName, bio }),
       });
       const data = await res.json();
@@ -343,9 +400,7 @@ function ProfileModal({ user, token, profile, onUpdate, onClose }) {
       const formData = new FormData();
       formData.append('avatar', file);
       const res = await fetch(`${API_URL}/api/users/avatar`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
       });
       const data = await res.json();
       if (res.ok) onUpdate(data);

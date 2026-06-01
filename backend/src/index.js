@@ -103,7 +103,10 @@ app.get('/api/messages', authenticateToken, async (req, res) => {
 
 app.get('/api/rooms', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM rooms ORDER BY created_at ASC');
+    const result = await pool.query(
+      `SELECT * FROM rooms WHERE type = 'channel' OR (type = 'dm' AND $1 = ANY(participant_ids)) ORDER BY created_at ASC`,
+      [req.user.id]
+    );
     res.json(result.rows);
   } catch (err) {
     console.error('Fetch rooms error:', err.message);
@@ -118,8 +121,8 @@ app.post('/api/rooms', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Room name required' });
     }
     const result = await pool.query(
-      'INSERT INTO rooms (name, created_by) VALUES ($1, $2) RETURNING *',
-      [name.trim(), req.user.id]
+      'INSERT INTO rooms (name, type, created_by) VALUES ($1, $2, $3) RETURNING *',
+      [name.trim(), 'channel', req.user.id]
     );
     const room = result.rows[0];
     io.emit('new_room', room);
@@ -127,6 +130,50 @@ app.post('/api/rooms', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Create room error:', err.message);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/conversations', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId || userId === req.user.id) {
+      return res.status(400).json({ error: 'Invalid user' });
+    }
+    const existing = await pool.query(
+      `SELECT * FROM rooms WHERE type = 'dm' AND $1 = ANY(participant_ids) AND $2 = ANY(participant_ids)`,
+      [req.user.id, userId]
+    );
+    if (existing.rows.length > 0) {
+      return res.json(existing.rows[0]);
+    }
+    const userResult = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const otherUser = userResult.rows[0].username;
+    const result = await pool.query(
+      `INSERT INTO rooms (name, type, participant_ids, created_by) VALUES ($1, 'dm', $2, $3) RETURNING *`,
+      [otherUser, [req.user.id, userId], req.user.id]
+    );
+    const room = result.rows[0];
+    io.emit('new_room', room);
+    res.status(201).json(room);
+  } catch (err) {
+    console.error('Create conversation error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/users', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, username, avatar_url, display_name FROM users WHERE id != $1 ORDER BY username ASC',
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Fetch users error:', err.message);
+    res.json([]);
   }
 });
 

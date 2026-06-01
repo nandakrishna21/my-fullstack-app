@@ -26,12 +26,14 @@ export async function initDB() {
       CREATE TABLE IF NOT EXISTS rooms (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
+        type VARCHAR(10) DEFAULT 'channel',
+        participant_ids INTEGER[] DEFAULT '{}',
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
     await pool.query(`
-      INSERT INTO rooms (id, name) VALUES (1, 'General') ON CONFLICT (id) DO NOTHING
+      INSERT INTO rooms (id, name, type) VALUES (1, 'General', 'channel') ON CONFLICT (id) DO NOTHING
     `);
     console.log('Rooms table initialized');
   } catch (err) {
@@ -67,6 +69,8 @@ export async function initDB() {
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '{}'`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN DEFAULT FALSE`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS room_id INTEGER DEFAULT 1`);
+    await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS type VARCHAR(10) DEFAULT 'channel'`);
+    await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS participant_ids INTEGER[] DEFAULT '{}'`);
     console.log('Schema migrations applied');
   } catch (err) {
     console.error('Schema migration error:', err.message);
