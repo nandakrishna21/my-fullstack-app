@@ -33,20 +33,22 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const [joinCode, setJoinCode] = useState('');
   const [loadingMessages, setLoadingMessages] = useState(false);
   const searchInputRef = useRef(null);
+  const fetchRef = useRef(0);
+  const roomRef = useRef(activeRoom);
 
-  const loadCachedMessages = useCallback((roomId) => {
+  const [messages, setMessages] = useState(() => {
     try {
-      const cached = localStorage.getItem(`messages_${roomId}`);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-          return true;
+      const savedRoom = localStorage.getItem('activeRoom');
+      if (savedRoom) {
+        const cached = localStorage.getItem(`messages_${savedRoom}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         }
       }
     } catch {}
-    return false;
-  }, []);
+    return [];
+  });
 
   const cacheMessages = useCallback((roomId, msgs) => {
     try {
@@ -56,6 +58,8 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
 
   const fetchMessages = useCallback((retries = 3) => {
     if (!activeRoom || !token) return;
+    roomRef.current = activeRoom;
+    const fetchId = ++fetchRef.current;
     setLoadingMessages(true);
     const params = new URLSearchParams({ room_id: activeRoom });
     if (searchQuery) params.set('search', searchQuery);
@@ -67,6 +71,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         return r.json();
       })
       .then((data) => {
+        if (fetchId !== fetchRef.current) return;
         if (Array.isArray(data)) {
           setMessages(data);
           cacheMessages(activeRoom, data);
@@ -74,6 +79,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         setLoadingMessages(false);
       })
       .catch((err) => {
+        if (fetchId !== fetchRef.current) return;
         console.error('Fetch messages failed:', err);
         if (retries > 0) {
           setTimeout(() => fetchMessages(retries - 1), 3000);
@@ -109,9 +115,17 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   }, [token]);
 
   useEffect(() => {
-    loadCachedMessages(activeRoom);
+    try {
+      const cached = localStorage.getItem(`messages_${activeRoom}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
+      }
+    } catch {}
     fetchMessages();
-  }, [fetchMessages, loadCachedMessages, activeRoom]);
+  }, [fetchMessages, activeRoom]);
 
   useEffect(() => {
     if (!socket) return;
