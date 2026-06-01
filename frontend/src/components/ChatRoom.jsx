@@ -14,7 +14,7 @@ function hashColor(str) {
   return COLORS[Math.abs(hash) % COLORS.length];
 }
 
-function ChatRoom({ user, token, socket, onLogout }) {
+function ChatRoom({ user, token, socket, onLogout, theme, onToggleTheme }) {
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
@@ -180,6 +180,9 @@ function ChatRoom({ user, token, socket, onLogout }) {
             <h2>General</h2>
             <p>{onlineCount} {onlineCount === 1 ? 'member' : 'members'}</p>
           </div>
+          <button className="theme-toggle" onClick={onToggleTheme} title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
         </div>
         <MessageList messages={messages} currentUser={user.username} />
         {typingText && (

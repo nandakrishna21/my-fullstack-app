@@ -10,6 +10,16 @@ function App() {
   const [token, setToken] = useState(null);
   const [socket, setSocket] = useState(null);
   const [connecting, setConnecting] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
@@ -80,7 +90,7 @@ function App() {
 
   return (
     <div className="container">
-      <ChatRoom user={user} token={token} socket={socket} onLogout={handleLogout} />
+      <ChatRoom user={user} token={token} socket={socket} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
     </div>
   );
 }
