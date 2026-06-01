@@ -53,7 +53,6 @@ app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
-
 app.use('/uploads', express.static(uploadsDir));
 
 app.post('/api/upload', authenticateToken, (req, res) => {
@@ -78,14 +77,139 @@ app.post('/api/upload', authenticateToken, (req, res) => {
 
 app.get('/api/messages', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, user_id, username, content, file_url, file_name, file_type, file_size, created_at FROM messages ORDER BY created_at ASC LIMIT 100'
-    );
+    const { search } = req.query;
+    let query = 'SELECT * FROM messages';
+    let params = [];
+    if (search) {
+      query += ' WHERE content ILIKE $1';
+      params.push(`%${search}%`);
+    }
+    query += ' ORDER BY created_at ASC LIMIT 100';
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error('Fetch messages error:', err.message);
     res.json([]);
   }
+});
+
+app.put('/api/messages/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const result = await pool.query(
+      'UPDATE messages SET content = $1, edited = TRUE WHERE id = $2 AND user_id = $3 RETURNING *',
+      [content, id, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Message not found or not owned by you' });
+    }
+    io.emit('edit_message', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Edit message error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/api/messages/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'DELETE FROM messages WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Message not found or not owned by you' });
+    }
+    io.emit('delete_message', { id: Number(id) });
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Delete message error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/messages/:id/react', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { emoji } = req.body;
+    const msgResult = await pool.query('SELECT * FROM messages WHERE id = $1', [id]);
+    if (msgResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+    const msg = msgResult.rows[0];
+    const reactions = msg.reactions || {};
+    const username = req.user.username;
+    if (reactions[emoji] && reactions[emoji].includes(username)) {
+      reactions[emoji] = reactions[emoji].filter((u) => u !== username);
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+    } else {
+      if (!reactions[emoji]) reactions[emoji] = [];
+      if (!reactions[emoji].includes(username)) reactions[emoji].push(username);
+    }
+    await pool.query('UPDATE messages SET reactions = $1 WHERE id = $2', [JSON.stringify(reactions), id]);
+    const updated = await pool.query('SELECT * FROM messages WHERE id = $1', [id]);
+    io.emit('message_react', updated.rows[0]);
+    res.json(updated.rows[0]);
+  } catch (err) {
+    console.error('React error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/users/profile', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, username, avatar_url, display_name, bio, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Profile error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/api/users/profile', authenticateToken, async (req, res) => {
+  try {
+    const { display_name, bio } = req.body;
+    const result = await pool.query(
+      'UPDATE users SET display_name = $1, bio = $2 WHERE id = $3 RETURNING id, username, avatar_url, display_name, bio, created_at',
+      [display_name || null, bio || null, req.user.id]
+    );
+    io.emit('user_updated', result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Update profile error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/users/avatar', authenticateToken, (req, res) => {
+  upload.single('avatar')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+    try {
+      const avatarUrl = `/uploads/${req.file.filename}`;
+      const result = await pool.query(
+        'UPDATE users SET avatar_url = $1 WHERE id = $2 RETURNING id, username, avatar_url, display_name, bio, created_at',
+        [avatarUrl, req.user.id]
+      );
+      io.emit('user_updated', result.rows[0]);
+      res.json(result.rows[0]);
+    } catch (dbErr) {
+      console.error('Avatar update error:', dbErr.message);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
 });
 
 app.get('/api/health', (_req, res) => {
@@ -98,7 +222,7 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   socket.on('join', (userData) => {
-    const entry = { id: userData.id, username: userData.username, status: userData.status || 'online' };
+    const entry = { id: userData.id, username: userData.username, avatar_url: userData.avatar_url || null, display_name: userData.display_name || null, status: userData.status || 'online' };
     socket.userData = entry;
     onlineUsers.set(socket.id, entry);
     io.emit('online_users', Array.from(onlineUsers.values()).filter(u => u.status === 'online'));
@@ -119,7 +243,7 @@ io.on('connection', (socket) => {
       const result = await pool.query(
         `INSERT INTO messages (user_id, username, content, file_url, file_name, file_type, file_size)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id, user_id, username, content, file_url, file_name, file_type, file_size, created_at`,
+         RETURNING *`,
         [data.userId, data.username, data.content || null, data.fileUrl || null, data.fileName || null, data.fileType || null, data.fileSize || null]
       );
       io.emit('new_message', result.rows[0]);
@@ -134,6 +258,8 @@ io.on('connection', (socket) => {
         file_name: data.fileName || null,
         file_type: data.fileType || null,
         file_size: data.fileSize || null,
+        reactions: {},
+        edited: false,
         created_at: new Date().toISOString(),
       });
     }

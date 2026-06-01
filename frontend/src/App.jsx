@@ -11,6 +11,7 @@ function App() {
   const [socket, setSocket] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -33,22 +34,26 @@ function App() {
 
   useEffect(() => {
     if (!token) return;
+    fetch(`${API_URL}/api/users/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.id) setProfile(data);
+      })
+      .catch(() => {});
+  }, [token]);
 
+  useEffect(() => {
+    if (!token) return;
     const newSocket = io(API_URL || undefined);
-
-    newSocket.on('connect', () => {
-      setConnecting(false);
+    newSocket.on('connect', () => setConnecting(false));
+    newSocket.on('disconnect', () => setConnecting(true));
+    newSocket.on('user_updated', (data) => {
+      if (data.id === user?.id) setProfile(data);
     });
-
-    newSocket.on('disconnect', () => {
-      setConnecting(true);
-    });
-
     setSocket(newSocket);
-
-    return () => {
-      newSocket.disconnect();
-    };
+    return () => { newSocket.disconnect(); };
   }, [token]);
 
   const handleAuth = (userData, authToken) => {
@@ -60,13 +65,12 @@ function App() {
   };
 
   const handleLogout = () => {
-    if (socket) {
-      socket.disconnect();
-    }
+    if (socket) socket.disconnect();
     setUser(null);
     setToken(null);
     setSocket(null);
     setConnecting(false);
+    setProfile(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
@@ -90,7 +94,7 @@ function App() {
 
   return (
     <div className="container">
-      <ChatRoom user={user} token={token} socket={socket} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
+      <ChatRoom user={user} token={token} socket={socket} profile={profile} onProfileUpdate={setProfile} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
     </div>
   );
 }

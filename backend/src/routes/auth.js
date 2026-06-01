@@ -24,7 +24,7 @@ router.post('/register', async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username, created_at',
+      'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username, avatar_url, display_name, bio, created_at',
       [username, password_hash]
     );
 
@@ -59,7 +59,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
-    res.json({ user: { id: user.id, username: user.username, created_at: user.created_at }, token });
+    res.json({ user: { id: user.id, username: user.username, avatar_url: user.avatar_url, display_name: user.display_name, bio: user.bio, created_at: user.created_at }, token });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error' });

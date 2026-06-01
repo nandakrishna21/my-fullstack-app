@@ -13,6 +13,9 @@ export async function initDB() {
       id SERIAL PRIMARY KEY,
       username VARCHAR(50) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
+      avatar_url VARCHAR(500),
+      display_name VARCHAR(50),
+      bio TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
@@ -29,12 +32,35 @@ export async function initDB() {
         file_name VARCHAR(255),
         file_type VARCHAR(100),
         file_size INTEGER,
+        reactions JSONB DEFAULT '{}',
+        edited BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
     console.log('Messages table initialized');
   } catch (err) {
     console.error('Failed to create messages table:', err.message);
+  }
+
+  try {
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)
+    `);
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(50)
+    `);
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT
+    `);
+    await pool.query(`
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '{}'
+    `);
+    await pool.query(`
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN DEFAULT FALSE
+    `);
+    console.log('Schema migrations applied');
+  } catch (err) {
+    console.error('Schema migration error:', err.message);
   }
 }
 
