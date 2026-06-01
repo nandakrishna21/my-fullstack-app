@@ -33,7 +33,6 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const [joinCode, setJoinCode] = useState('');
   const [loadingMessages, setLoadingMessages] = useState(false);
   const searchInputRef = useRef(null);
-  const messageFetchRef = useRef(null);
 
   const fetchMessages = useCallback((retries = 3) => {
     if (!activeRoom || !token) return;
@@ -86,6 +85,12 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
+
+  useEffect(() => {
+    if (!token || !activeRoom) return;
+    const timer = setInterval(() => fetchMessages(1), 60000);
+    return () => clearInterval(timer);
+  }, [token, activeRoom]);
 
   useEffect(() => {
     if (!socket) return;
@@ -444,6 +449,9 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
             <h2>{currentRoom?.name || 'General'}</h2>
             <p>{currentRoom?.type === 'dm' ? 'Direct message' : `${onlineCount} ${onlineCount === 1 ? 'member' : 'members'}`}</p>
           </div>
+          {isAdmin && currentRoom?.id !== 1 && currentRoom?.type === 'channel' && (
+            <button className="header-delete-btn" onClick={() => handleDeleteRoom(currentRoom.id)} title="Delete Channel">🗑️</button>
+          )}
           <form className="search-bar" onSubmit={handleSearch}>
             <input ref={searchInputRef} type="text" placeholder="Search messages..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             {searchQuery && <button type="button" className="search-clear" onClick={handleClearSearch}>✕</button>}

@@ -12,6 +12,7 @@ function App() {
   const [connecting, setConnecting] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [profile, setProfile] = useState(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -34,14 +35,21 @@ function App() {
 
   useEffect(() => {
     if (!token) return;
+    setProfileLoaded(false);
     fetch(`${API_URL}/api/users/profile`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
       .then((data) => {
-        if (data.id) { setProfile(data); setUser((prev) => ({ ...prev, is_admin: data.is_admin })); }
+        if (data.id) {
+          setProfile(data);
+          const updatedUser = { id: data.id, username: data.username, is_admin: data.is_admin };
+          setUser(updatedUser);
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+        setProfileLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => { setProfileLoaded(true); });
   }, [token]);
 
   useEffect(() => {
@@ -50,7 +58,12 @@ function App() {
     newSocket.on('connect', () => setConnecting(false));
     newSocket.on('disconnect', () => setConnecting(true));
     newSocket.on('user_updated', (data) => {
-      if (data.id === user?.id) { setProfile(data); setUser((prev) => ({ ...prev, is_admin: data.is_admin })); }
+      if (data.id === user?.id) {
+        setProfile(data);
+        const updatedUser = { id: data.id, username: data.username, is_admin: data.is_admin };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
     });
     setSocket(newSocket);
     return () => { newSocket.disconnect(); };
@@ -60,6 +73,7 @@ function App() {
     setUser(userData);
     setToken(authToken);
     setConnecting(true);
+    setProfileLoaded(false);
     localStorage.setItem('token', authToken);
     localStorage.setItem('user', JSON.stringify(userData));
   };
@@ -71,6 +85,7 @@ function App() {
     setSocket(null);
     setConnecting(false);
     setProfile(null);
+    setProfileLoaded(false);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };

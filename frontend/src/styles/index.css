@@ -1109,6 +1109,29 @@ body {
   border-color: rgba(102, 126, 234, 0.3);
 }
 
+.header-delete-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--bg-attach);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.header-delete-btn:hover {
+  background: var(--danger-hover);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
 /* ─── Message Input ─── */
 
 .message-input-area {
