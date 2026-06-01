@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
+import jwt from 'jsonwebtoken';
 import pool, { initDB } from './db.js';
 import authRoutes from './routes/auth.js';
 import { authenticateToken } from './middleware/auth.js';
@@ -429,6 +430,22 @@ app.post('/api/users/promote', authenticateToken, async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Promote error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/setup/admin', authenticateToken, async (req, res) => {
+  try {
+    const adminCheck = await pool.query("SELECT COUNT(*) FROM users WHERE is_admin = TRUE");
+    if (parseInt(adminCheck.rows[0].count) > 0) {
+      return res.status(400).json({ error: 'An admin already exists' });
+    }
+    await pool.query("UPDATE users SET is_admin = TRUE WHERE id = $1", [req.user.id]);
+    const updated = await pool.query("SELECT id, username, avatar_url, display_name, bio, is_admin, created_at FROM users WHERE id = $1", [req.user.id]);
+    const token = jwt.sign({ id: req.user.id, username: req.user.username, is_admin: true }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ user: updated.rows[0], token });
+  } catch (err) {
+    console.error('Setup admin error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
