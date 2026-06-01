@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 function LoginForm({ onAuth }) {
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
@@ -13,8 +15,8 @@ function LoginForm({ onAuth }) {
     setLoading(true);
 
     try {
-      const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
-      const res = await fetch(endpoint, {
+      const endpoint = (isRegister ? '/api/auth/register' : '/api/auth/login');
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

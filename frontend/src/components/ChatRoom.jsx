@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import MessageList from './MessageList.jsx';
 import MessageInput from './MessageInput.jsx';
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 function ChatRoom({ user, token, socket, onLogout }) {
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
 
   useEffect(() => {
-    fetch('/api/messages', {
+    fetch(`${API_URL}/api/messages`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
