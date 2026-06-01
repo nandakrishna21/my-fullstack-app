@@ -23,8 +23,26 @@ export async function initDB() {
 
   try {
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      INSERT INTO rooms (id, name) VALUES (1, 'General') ON CONFLICT (id) DO NOTHING
+    `);
+    console.log('Rooms table initialized');
+  } catch (err) {
+    console.error('Failed to create rooms table:', err.message);
+  }
+
+  try {
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
+        room_id INTEGER DEFAULT 1 REFERENCES rooms(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         username VARCHAR(50) NOT NULL,
         content TEXT,
@@ -43,21 +61,12 @@ export async function initDB() {
   }
 
   try {
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)
-    `);
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(50)
-    `);
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT
-    `);
-    await pool.query(`
-      ALTER TABLE messages ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '{}'
-    `);
-    await pool.query(`
-      ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN DEFAULT FALSE
-    `);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(50)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '{}'`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN DEFAULT FALSE`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS room_id INTEGER DEFAULT 1`);
     console.log('Schema migrations applied');
   } catch (err) {
     console.error('Schema migration error:', err.message);

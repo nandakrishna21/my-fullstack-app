@@ -77,12 +77,20 @@ app.post('/api/upload', authenticateToken, (req, res) => {
 
 app.get('/api/messages', authenticateToken, async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, room_id } = req.query;
     let query = 'SELECT * FROM messages';
     let params = [];
+    const conditions = [];
+    if (room_id) {
+      conditions.push(`room_id = $${params.length + 1}`);
+      params.push(room_id);
+    }
     if (search) {
-      query += ' WHERE content ILIKE $1';
+      conditions.push(`content ILIKE $${params.length + 1}`);
       params.push(`%${search}%`);
+    }
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
     }
     query += ' ORDER BY created_at ASC LIMIT 100';
     const result = await pool.query(query, params);
@@ -90,6 +98,35 @@ app.get('/api/messages', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Fetch messages error:', err.message);
     res.json([]);
+  }
+});
+
+app.get('/api/rooms', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM rooms ORDER BY created_at ASC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Fetch rooms error:', err.message);
+    res.json([]);
+  }
+});
+
+app.post('/api/rooms', authenticateToken, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Room name required' });
+    }
+    const result = await pool.query(
+      'INSERT INTO rooms (name, created_by) VALUES ($1, $2) RETURNING *',
+      [name.trim(), req.user.id]
+    );
+    const room = result.rows[0];
+    io.emit('new_room', room);
+    res.status(201).json(room);
+  } catch (err) {
+    console.error('Create room error:', err.message);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -241,16 +278,17 @@ io.on('connection', (socket) => {
   socket.on('send_message', async (data) => {
     try {
       const result = await pool.query(
-        `INSERT INTO messages (user_id, username, content, file_url, file_name, file_type, file_size)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO messages (room_id, user_id, username, content, file_url, file_name, file_type, file_size)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-        [data.userId, data.username, data.content || null, data.fileUrl || null, data.fileName || null, data.fileType || null, data.fileSize || null]
+        [data.roomId || 1, data.userId, data.username, data.content || null, data.fileUrl || null, data.fileName || null, data.fileType || null, data.fileSize || null]
       );
       io.emit('new_message', result.rows[0]);
     } catch (err) {
       console.error('Save message error:', err.message);
       io.emit('new_message', {
         id: Date.now(),
+        room_id: data.roomId || 1,
         user_id: data.userId,
         username: data.username,
         content: data.content || null,

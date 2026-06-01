@@ -5,18 +5,13 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading })
   const [selectedFile, setSelectedFile] = useState(null);
   const typingTimeout = useRef(null);
   const fileInputRef = useRef(null);
+  const textInputRef = useRef(null);
 
   const handleChange = (e) => {
     setContent(e.target.value);
     onTyping();
-
-    if (typingTimeout.current) {
-      clearTimeout(typingTimeout.current);
-    }
-
-    typingTimeout.current = setTimeout(() => {
-      onStopTyping();
-    }, 1500);
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => onStopTyping(), 1500);
   };
 
   const handleSubmit = (e) => {
@@ -28,10 +23,7 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading })
       return;
     }
     if (!content.trim()) return;
-
-    if (typingTimeout.current) {
-      clearTimeout(typingTimeout.current);
-    }
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
     onStopTyping();
     onSend(content.trim());
     setContent('');
@@ -43,6 +35,21 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading })
     setSelectedFile(file);
   };
 
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          setSelectedFile(file);
+        }
+        return;
+      }
+    }
+  };
+
   const clearFile = () => {
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -50,10 +57,7 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading })
 
   useEffect(() => {
     return () => {
-      if (typingTimeout.current) {
-        clearTimeout(typingTimeout.current);
-        onStopTyping();
-      }
+      if (typingTimeout.current) clearTimeout(typingTimeout.current);
     };
   }, []);
 
@@ -92,10 +96,12 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading })
           style={{ display: 'none' }}
         />
         <input
+          ref={textInputRef}
           type="text"
           placeholder={selectedFile ? 'Add a caption (optional)...' : 'Type a message...'}
           value={content}
           onChange={handleChange}
+          onPaste={handlePaste}
           autoFocus
         />
         <button type="submit" disabled={(!content.trim() && !selectedFile) || uploading}>
