@@ -1904,6 +1904,122 @@ body {
   cursor: not-allowed;
 }
 
+/* ─── Room Item Menu ─── */
+
+.room-item {
+  position: relative;
+}
+
+.room-item-menu {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+
+.room-item:hover .room-item-menu {
+  display: flex;
+}
+
+.room-item-menu:hover {
+  background: var(--bg-msg-other);
+  color: var(--text-primary);
+}
+
+.room-context-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--bg-menu);
+  border: 1px solid var(--bg-menu-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px var(--bg-menu-shadow);
+  z-index: 50;
+  min-width: 130px;
+  overflow: hidden;
+  animation: fadeUp 0.1s ease;
+}
+
+.room-context-menu button {
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.1s;
+}
+
+.room-context-menu button:hover {
+  background: var(--bg-msg-other);
+}
+
+.room-item.editing {
+  padding: 4px 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.room-item.editing input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.room-item.editing input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.room-edit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.room-edit-actions button {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.room-edit-actions button:first-child {
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.room-edit-actions button:last-child {
+  background: var(--bg-msg-other);
+  color: var(--text-secondary);
+}
+
 /* ─── DM Items ─── */
 
 .dm-item {

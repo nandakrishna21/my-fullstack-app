@@ -71,13 +71,15 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
     socket.on('delete_message', ({ id }) => setMessages((prev) => prev.filter((m) => m.id !== id)));
     socket.on('message_react', (msg) => setMessages((prev) => prev.map((m) => m.id === msg.id ? msg : m)));
     socket.on('new_room', (room) => setRooms((prev) => [...prev, room]));
+    socket.on('room_updated', (room) => setRooms((prev) => prev.map((r) => r.id === room.id ? room : r)));
+    socket.on('room_deleted', ({ id }) => setRooms((prev) => prev.filter((r) => r.id !== id)));
     socket.on('system_message', (msg) => setMessages((prev) => [...prev, { ...msg, id: Date.now() + Math.random(), type: 'system' }]));
     socket.on('online_users', (users) => setOnlineUsers(users));
     socket.on('user_typing', (username) => setTypingUsers((prev) => prev.includes(username) ? prev : [...prev, username]));
     socket.on('user_stop_typing', (username) => setTypingUsers((prev) => prev.filter((u) => u !== username)));
     return () => {
       socket.off('new_message'); socket.off('edit_message'); socket.off('delete_message');
-      socket.off('message_react'); socket.off('new_room'); socket.off('system_message');
+      socket.off('message_react'); socket.off('new_room'); socket.off('room_updated'); socket.off('room_deleted'); socket.off('system_message');
       socket.off('online_users'); socket.off('user_typing'); socket.off('user_stop_typing');
     };
   }, [socket, user]);
@@ -110,6 +112,32 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       const data = await res.json();
       if (res.ok) { setActiveRoom(data.id); setShowNewChat(false); }
     } catch (err) { alert('Failed to start conversation'); }
+  };
+
+  const [editingRoomId, setEditingRoomId] = useState(null);
+  const [editingRoomName, setEditingRoomName] = useState('');
+
+  const handleRenameRoom = async (roomId) => {
+    if (!editingRoomName.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/api/rooms/${roomId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: editingRoomName.trim() }),
+      });
+      if (res.ok) setEditingRoomId(null);
+    } catch { alert('Failed to rename'); }
+  };
+
+  const handleDeleteRoom = async (roomId) => {
+    if (!confirm('Delete this room and all its messages?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/rooms/${roomId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok && activeRoom === roomId) setActiveRoom(1);
+    } catch { alert('Failed to delete'); }
   };
 
   const handleSend = (content) => {
@@ -256,10 +284,20 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
           </div>
           <ul className="room-list">
             {channels.map((room) => (
-              <li key={room.id} className={`room-item ${room.id === activeRoom ? 'active' : ''}`} onClick={() => switchRoom(room.id)}>
-                <span className="room-hash">#</span>
-                <span className="room-name">{room.name}</span>
-              </li>
+              <RoomListItem
+                key={room.id}
+                room={room}
+                active={room.id === activeRoom}
+                editing={editingRoomId === room.id}
+                editName={editingRoomName}
+                onSelect={() => switchRoom(room.id)}
+                onStartEdit={() => { setEditingRoomId(room.id); setEditingRoomName(room.name); }}
+                onEditChange={setEditingRoomName}
+                onSave={() => handleRenameRoom(room.id)}
+                onCancelEdit={() => setEditingRoomId(null)}
+                onDelete={() => handleDeleteRoom(room.id)}
+                prefix="#"
+              />
             ))}
           </ul>
           {showCreateRoom && (
@@ -280,18 +318,18 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
             <button className="room-add-btn" onClick={openNewChat} title="New conversation">✉</button>
           </div>
           <ul className="room-list">
-            {dms.map((room) => {
-              const otherId = room.participant_ids?.find((id) => id !== user.id);
-              return (
-                <li key={room.id} className={`room-item dm-item ${room.id === activeRoom ? 'active' : ''}`} onClick={() => switchRoom(room.id)}>
-                  <div className="dm-avatar-sm" style={{ background: hashColor(room.name) }}>
-                    {room.name[0].toUpperCase()}
-                    {onlineUsernames.has(room.name) && <span className="dm-online-dot" />}
-                  </div>
-                  <span className="room-name">{room.name}</span>
-                </li>
-              );
-            })}
+            {dms.map((room) => (
+              <RoomListItem
+                key={room.id}
+                room={room}
+                active={room.id === activeRoom}
+                onSelect={() => switchRoom(room.id)}
+                onDelete={() => handleDeleteRoom(room.id)}
+                dm
+                online={onlineUsernames.has(room.name)}
+                hashColor={hashColor}
+              />
+            ))}
             {dms.length === 0 && <li className="room-empty">No conversations yet</li>}
           </ul>
         </div>
@@ -370,6 +408,48 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         </div>
       )}
     </div>
+  );
+}
+
+function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, onEditChange, onSave, onCancelEdit, onDelete, prefix, dm, online, hashColor }) {
+  const [showMenu, setShowMenu] = useState(false);
+
+  if (editing) {
+    return (
+      <li className="room-item editing">
+        <input value={editName} onChange={(e) => onEditChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancelEdit(); }}
+          autoFocus onClick={(e) => e.stopPropagation()} />
+        <div className="room-edit-actions">
+          <button onClick={(e) => { e.stopPropagation(); onSave(); }}>✓</button>
+          <button onClick={(e) => { e.stopPropagation(); onCancelEdit(); }}>✕</button>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li className={`room-item ${dm ? 'dm-item' : ''} ${active ? 'active' : ''}`}
+      onClick={onSelect}
+      onContextMenu={(e) => { e.preventDefault(); setShowMenu(true); }}
+    >
+      {dm ? (
+        <div className="dm-avatar-sm" style={{ background: hashColor(room.name) }}>
+          {room.name[0].toUpperCase()}
+          {online && <span className="dm-online-dot" />}
+        </div>
+      ) : (
+        <span className="room-hash">{prefix || '#'}</span>
+      )}
+      <span className="room-name">{room.name}</span>
+      <button className="room-item-menu" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>⋯</button>
+      {showMenu && (
+        <div className="room-context-menu" onMouseLeave={() => setShowMenu(false)} onClick={(e) => e.stopPropagation()}>
+          {!dm && <button onClick={() => { setShowMenu(false); onStartEdit(); }}>✏️ Rename</button>}
+          <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>
+        </div>
+      )}
+    </li>
   );
 }
 

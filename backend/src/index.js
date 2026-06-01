@@ -133,6 +133,50 @@ app.post('/api/rooms', authenticateToken, async (req, res) => {
   }
 });
 
+app.put('/api/rooms/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Room name required' });
+    }
+    const result = await pool.query(
+      'UPDATE rooms SET name = $1 WHERE id = $2 AND (type = $3 OR created_by = $4) RETURNING *',
+      [name.trim(), id, 'channel', req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    const room = result.rows[0];
+    io.emit('room_updated', room);
+    res.json(room);
+  } catch (err) {
+    console.error('Update room error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/api/rooms/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (Number(id) === 1) {
+      return res.status(400).json({ error: 'Cannot delete General channel' });
+    }
+    const result = await pool.query(
+      'DELETE FROM rooms WHERE id = $1 AND (type = $2 OR created_by = $3) RETURNING id',
+      [id, 'channel', req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    io.emit('room_deleted', { id: Number(id) });
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Delete room error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.post('/api/conversations', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.body;
