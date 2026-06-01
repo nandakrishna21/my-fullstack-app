@@ -53,6 +53,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   });
 
   const cacheMessages = useCallback((roomId, msgs) => {
+    if (!Array.isArray(msgs) || msgs.length === 0) return;
     try {
       localStorage.setItem(`messages_${roomId}`, JSON.stringify(msgs));
     } catch {}
