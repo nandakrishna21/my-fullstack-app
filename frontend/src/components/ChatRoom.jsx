@@ -19,6 +19,7 @@ function ChatRoom({ user, token, socket, onLogout }) {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/api/messages`, {
@@ -73,6 +74,39 @@ function ChatRoom({ user, token, socket, onLogout }) {
         content,
       });
       socket.emit('stop_typing', user.username);
+    }
+  };
+
+  const handleFileSend = async (file) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (socket) {
+        socket.emit('send_message', {
+          userId: user.id,
+          username: user.username,
+          content: null,
+          fileUrl: data.url,
+          fileName: data.name,
+          fileType: data.type,
+          fileSize: data.size,
+        });
+      }
+    } catch (err) {
+      alert('Upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -154,7 +188,7 @@ function ChatRoom({ user, token, socket, onLogout }) {
             {typingText}
           </div>
         )}
-        <MessageInput onSend={handleSend} onTyping={handleTyping} onStopTyping={handleStopTyping} />
+        <MessageInput onSend={handleSend} onFileSend={handleFileSend} onTyping={handleTyping} onStopTyping={handleStopTyping} uploading={uploading} />
       </div>
     </div>
   );

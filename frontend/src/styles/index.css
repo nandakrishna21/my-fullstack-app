@@ -625,6 +625,121 @@ body {
   color: rgba(255, 255, 255, 0.5);
 }
 
+.has-file {
+  padding: 8px 8px 10px 14px;
+}
+
+.message.own.has-file {
+  padding: 8px 8px 10px 14px;
+}
+
+/* ─── File Attachment in Message ─── */
+
+.file-attachment {
+  margin: 4px 0 6px;
+  border-radius: 10px;
+  overflow: hidden;
+  max-width: 280px;
+}
+
+.file-image {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: pointer;
+  display: block;
+  transition: opacity 0.15s;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.file-image:hover {
+  opacity: 0.85;
+}
+
+.file-attachment.file-pdf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+  max-width: 280px;
+}
+
+.file-attachment.file-pdf:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.file-pdf-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 2px;
+}
+
+.file-download {
+  font-size: 16px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+/* ─── Expanded Image Overlay ─── */
+
+.file-expanded-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  cursor: pointer;
+  animation: fadeUp 0.15s ease;
+}
+
+.file-expanded-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* ─── Spinner Small ─── */
+
+.spinner-sm {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
 /* ─── Typing Indicator ─── */
 
 .typing-indicator {
@@ -656,6 +771,102 @@ body {
 @keyframes typingDot {
   0%, 60%, 100% { opacity: 0.2; }
   30% { opacity: 1; }
+}
+
+/* ─── Input Wrapper (file preview + input) ─── */
+
+.input-wrapper {
+  flex-shrink: 0;
+}
+
+/* ─── File Preview ─── */
+
+.file-preview {
+  padding: 12px 24px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: fadeUp 0.15s ease;
+}
+
+.file-preview-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.file-preview-pdf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.file-preview-icon {
+  font-size: 20px;
+}
+
+.file-preview-name {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-preview-remove {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.file-preview-remove:hover {
+  background: rgba(233, 69, 96, 0.3);
+  color: #e94560;
+}
+
+/* ─── Attach Button ─── */
+
+.attach-btn {
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background: rgba(26, 26, 46, 0.5);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.attach-btn:hover {
+  background: rgba(233, 69, 96, 0.15);
+  color: #e94560;
+  border-color: rgba(233, 69, 96, 0.3);
+}
+
+.attach-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 /* ─── Message Input ─── */
@@ -808,6 +1019,19 @@ body {
 
   .message-input-area button {
     padding: 14px 20px;
+  }
+
+  .attach-btn {
+    width: 46px;
+    height: 46px;
+  }
+
+  .file-preview {
+    padding: 8px 16px 0;
+  }
+
+  .file-attachment {
+    max-width: 200px;
   }
 
   .auth-form {
