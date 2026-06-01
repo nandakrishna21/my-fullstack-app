@@ -195,12 +195,12 @@ body {
 .auth-form {
   max-width: 420px;
   margin: 100px auto;
-  background: rgba(255, 255, 255, 0.97);
+  background: rgba(15, 15, 35, 0.95);
   backdrop-filter: blur(12px);
   padding: 44px 36px;
   border-radius: 20px;
-  box-shadow: 0 8px 60px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 60px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   animation: fadeUp 0.5s ease;
 }
 
@@ -220,7 +220,7 @@ body {
 .auth-form h1 {
   text-align: center;
   margin-bottom: 28px;
-  color: #1a1a2e;
+  color: #eee;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.3px;
@@ -234,16 +234,16 @@ body {
   width: 100%;
   padding: 14px 18px;
   margin-bottom: 14px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  background: rgba(245, 247, 250, 0.8);
-  color: var(--text-primary);
+  background: rgba(26, 26, 46, 0.7);
+  color: #eee;
   font-size: 15px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .auth-form input::placeholder {
-  color: var(--text-tertiary);
+  color: rgba(255, 255, 255, 0.25);
 }
 
 .auth-form input:focus {
@@ -285,7 +285,7 @@ body {
 .auth-form .toggle {
   text-align: center;
   margin-top: 20px;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.35);
   cursor: pointer;
   font-size: 14px;
   transition: color 0.2s;
@@ -296,11 +296,11 @@ body {
 }
 
 .auth-form .error {
-  color: var(--danger);
+  color: #ff6b6b;
   text-align: center;
   margin-bottom: 16px;
   font-size: 14px;
-  background: var(--danger-bg);
+  background: rgba(255, 107, 107, 0.1);
   padding: 10px;
   border-radius: 8px;
 }
