@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import MessageList from './MessageList.jsx';
 import MessageInput from './MessageInput.jsx';
 
@@ -31,7 +31,32 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const [allUsers, setAllUsers] = useState([]);
   const [showJoinChannel, setShowJoinChannel] = useState(false);
   const [joinCode, setJoinCode] = useState('');
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const searchInputRef = useRef(null);
+  const messageFetchRef = useRef(null);
+
+  const fetchMessages = useCallback((retries = 3) => {
+    if (!activeRoom || !token) return;
+    setLoadingMessages(true);
+    const params = new URLSearchParams({ room_id: activeRoom });
+    if (searchQuery) params.set('search', searchQuery);
+    fetch(`${API_URL}/api/messages?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => { if (Array.isArray(data)) setMessages(data); setLoadingMessages(false); })
+      .catch((err) => {
+        console.error('Fetch messages failed:', err);
+        if (retries > 0) {
+          setTimeout(() => fetchMessages(retries - 1), 3000);
+        } else {
+          setLoadingMessages(false);
+        }
+      });
+  }, [activeRoom, token, searchQuery]);
 
   useEffect(() => {
     localStorage.setItem('appearOffline', appearOffline);
@@ -39,6 +64,15 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       socket.emit('status_update', appearOffline ? 'offline' : 'online');
     }
   }, [appearOffline, socket]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('activeRoom');
+    if (saved) setActiveRoom(Number(saved));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('activeRoom', activeRoom);
+  }, [activeRoom]);
 
   useEffect(() => {
     fetch(`${API_URL}/api/rooms`, {
@@ -49,17 +83,32 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       .catch(console.error);
   }, [token]);
 
-  useEffect(() => {
-    if (!activeRoom) return;
+  const fetchMessages = useCallback((retries = 3) => {
+    if (!activeRoom || !token) return;
+    setLoadingMessages(true);
     const params = new URLSearchParams({ room_id: activeRoom });
     if (searchQuery) params.set('search', searchQuery);
     fetch(`${API_URL}/api/messages?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setMessages(data); })
-      .catch(console.error);
-  }, [token, activeRoom]);
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => { if (Array.isArray(data)) setMessages(data); setLoadingMessages(false); })
+      .catch((err) => {
+        console.error('Fetch messages failed:', err);
+        if (retries > 0) {
+          setTimeout(() => fetchMessages(retries - 1), 3000);
+        } else {
+          setLoadingMessages(false);
+        }
+      });
+  }, [activeRoom, token, searchQuery]);
+
+  useEffect(() => {
+    fetchMessages();
+  }, [fetchMessages]);
 
   useEffect(() => {
     if (!socket) return;
@@ -68,6 +117,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       avatar_url: profile?.avatar_url || null, display_name: profile?.display_name || null,
       status: appearOffline ? 'offline' : 'online',
     });
+    socket.on('connect', () => { fetchMessages(); });
     socket.on('new_message', (msg) => setMessages((prev) => [...prev, msg]));
     socket.on('edit_message', (msg) => setMessages((prev) => prev.map((m) => m.id === msg.id ? msg : m)));
     socket.on('delete_message', ({ id }) => setMessages((prev) => prev.filter((m) => m.id !== id)));
@@ -83,11 +133,11 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
     socket.on('user_typing', (username) => setTypingUsers((prev) => prev.includes(username) ? prev : [...prev, username]));
     socket.on('user_stop_typing', (username) => setTypingUsers((prev) => prev.filter((u) => u !== username)));
     return () => {
-      socket.off('new_message'); socket.off('edit_message'); socket.off('delete_message');
+      socket.off('connect'); socket.off('new_message'); socket.off('edit_message'); socket.off('delete_message');
       socket.off('message_react'); socket.off('new_room'); socket.off('room_updated'); socket.off('room_deleted'); socket.off('room_cleared'); socket.off('system_message');
       socket.off('online_users'); socket.off('user_typing'); socket.off('user_stop_typing');
     };
-  }, [socket, user]);
+  }, [socket, user, fetchMessages]);
 
   const switchRoom = (roomId) => {
     setActiveRoom(roomId);
@@ -250,22 +300,12 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
 
   const handleSearch = (e) => {
     e.preventDefault();
-    const params = new URLSearchParams({ room_id: activeRoom });
-    if (searchQuery) params.set('search', searchQuery);
-    fetch(`${API_URL}/api/messages?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setMessages(data); })
-      .catch(console.error);
+    fetchMessages();
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    fetch(`${API_URL}/api/messages?room_id=${activeRoom}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
+  };
       .then((data) => { if (Array.isArray(data)) setMessages(data); })
       .catch(console.error);
   };
@@ -439,7 +479,14 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
         </div>
-        <MessageList messages={messages} currentUser={user.username} onEdit={handleEdit} onDelete={handleDelete} onReact={handleReact} searchQuery={searchQuery} />
+        {loadingMessages ? (
+          <div className="messages-loading">
+            <div className="spinner" />
+            <p>Loading messages...</p>
+          </div>
+        ) : (
+          <MessageList messages={messages} currentUser={user.username} onEdit={handleEdit} onDelete={handleDelete} onReact={handleReact} searchQuery={searchQuery} />
+        )}
         {typingText && (
           <div className="typing-indicator">
             <span className="typing-dots"><span>.</span><span>.</span><span>.</span></span>
