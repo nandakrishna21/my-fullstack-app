@@ -284,11 +284,17 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
     } catch { alert('Failed to promote'); }
   };
 
-  const handleSend = (content) => {
-    if (socket) {
-      socket.emit('send_message', { roomId: activeRoom, userId: user.id, username: user.username, content });
-      socket.emit('stop_typing', user.username);
-    }
+  const handleSend = async (content) => {
+    if (!socket) return;
+    try {
+      const res = await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ room_id: activeRoom, content }),
+      });
+      if (!res.ok) return;
+    } catch {}
+    socket.emit('stop_typing', user.username);
   };
 
   const handleFileSend = async (file) => {
@@ -301,12 +307,14 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      if (socket) {
-        socket.emit('send_message', {
-          roomId: activeRoom, userId: user.id, username: user.username, content: null,
-          fileUrl: data.url, fileName: data.name, fileType: data.type, fileSize: data.size,
-        });
-      }
+      await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          room_id: activeRoom, content: null,
+          file_url: data.url, file_name: data.name, file_type: data.type, file_size: data.size,
+        }),
+      });
     } catch (err) { alert('Upload failed: ' + err.message); }
     finally { setUploading(false); }
   };
@@ -328,30 +336,16 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   };
 
   const handleReact = async (msgId, emoji) => {
-    const toggleReaction = (msgs, id, emoji) => {
-      const username = user.username;
-      return msgs.map((m) => {
-        if (m.id !== id) return m;
-        const reactions = { ...(m.reactions || {}) };
-        const list = [...(reactions[emoji] || [])];
-        const idx = list.indexOf(username);
-        if (idx >= 0) { list.splice(idx, 1); } else { list.push(username); }
-        if (list.length) { reactions[emoji] = list; } else { delete reactions[emoji]; }
-        return { ...m, reactions };
-      });
-    };
-    setMessages((prev) => toggleReaction(prev, msgId, emoji));
     try {
       const res = await fetch(`${API_URL}/api/messages/${msgId}/react`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ emoji }),
       });
-      if (!res.ok) {
-        setMessages((prev) => toggleReaction(prev, msgId, emoji));
+      if (res.ok) {
+        const updated = await res.json();
+        setMessages((prev) => prev.map((m) => m.id === updated.id ? updated : m));
       }
-    } catch {
-      setMessages((prev) => toggleReaction(prev, msgId, emoji));
-    }
+    } catch {}
   };
 
   const handleTyping = () => { if (socket) socket.emit('typing', user.username); };

@@ -76,6 +76,23 @@ app.post('/api/upload', authenticateToken, (req, res) => {
   });
 });
 
+app.post('/api/messages', authenticateToken, async (req, res) => {
+  try {
+    const { room_id, content, file_url, file_name, file_type, file_size } = req.body;
+    const result = await pool.query(
+      `INSERT INTO messages (room_id, user_id, username, content, file_url, file_name, file_type, file_size)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [room_id || 1, req.user.id, req.user.username, content || null, file_url || null, file_name || null, file_type || null, file_size || null]
+    );
+    const msg = result.rows[0];
+    io.emit('new_message', msg);
+    res.status(201).json(msg);
+  } catch (err) {
+    console.error('Create message error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/api/messages', authenticateToken, async (req, res) => {
   try {
     const { search, room_id } = req.query;
