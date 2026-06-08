@@ -82,6 +82,9 @@ function highlightText(text, query) {
 function FilePreview({ msg }) {
   const [expanded, setExpanded] = useState(false);
   const isImage = msg.file_type?.startsWith('image/');
+  const API = import.meta.env.VITE_API_URL || '';
+  const url = `${API}${msg.file_url}`;
+
   useEffect(() => {
     if (!expanded) return;
     const close = () => setExpanded(false);
@@ -90,20 +93,23 @@ function FilePreview({ msg }) {
   }, [expanded]);
 
   if (isImage) {
-    const url = `${import.meta.env.VITE_API_URL || ''}${msg.file_url}`;
     return (
       <div className="file-attachment">
-        <img src={url} alt={msg.file_name} className="file-image" onClick={(e) => { e.stopPropagation(); setExpanded(true); }} />
+        <img src={url} alt={msg.file_name} className="file-image" onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+        <span className="file-broken" style={{ display: 'none' }}>⚠️ Image unavailable</span>
         {expanded && (
           <div className="file-expanded-overlay" onClick={() => setExpanded(false)}>
             <img src={url} alt={msg.file_name} className="file-expanded-img" />
+            <a href={url} download={msg.file_name} className="file-download-btn" onClick={(e) => e.stopPropagation()}>⬇ Download</a>
           </div>
         )}
+        <a href={url} download={msg.file_name} className="file-download-link" title="Download">⬇</a>
       </div>
     );
   }
   return (
-    <a href={`${import.meta.env.VITE_API_URL || ''}${msg.file_url}`} target="_blank" rel="noopener noreferrer" className="file-attachment file-pdf" download={msg.file_name}>
+    <a href={url} target="_blank" rel="noopener noreferrer" className="file-attachment file-pdf" download={msg.file_name}>
       <span className="file-pdf-icon">📄</span>
       <div className="file-info">
         <span className="file-name">{msg.file_name}</span>

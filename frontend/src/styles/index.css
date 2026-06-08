@@ -1065,6 +1065,7 @@ body {
   border-radius: 10px;
   overflow: hidden;
   max-width: 280px;
+  position: relative;
 }
 
 .file-image {
@@ -1076,6 +1077,44 @@ body {
   display: block;
   transition: opacity 0.15s;
   border: 1px solid var(--img-border);
+}
+
+.file-download-link {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.file-attachment:hover .file-download-link {
+  opacity: 1;
+}
+
+.file-download-link:hover {
+  background: rgba(0,0,0,0.7);
+}
+
+.file-download-btn {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .file-image:hover {
