@@ -1,4 +1,41 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { marked } from 'marked';
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+import python from 'highlight.js/lib/languages/python';
+import html from 'highlight.js/lib/languages/xml';
+import css from 'highlight.js/lib/languages/css';
+import bash from 'highlight.js/lib/languages/bash';
+import json from 'highlight.js/lib/languages/json';
+import sql from 'highlight.js/lib/languages/sql';
+import typescript from 'highlight.js/lib/languages/typescript';
+
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('js', javascript);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('py', python);
+hljs.registerLanguage('html', html);
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('sh', bash);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('sql', sql);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('ts', typescript);
+
+const renderer = new marked.Renderer();
+renderer.code = ({ text, lang }) => {
+  const language = lang && hljs.getLanguage(lang) ? lang : '';
+  let highlighted;
+  if (language) {
+    highlighted = hljs.highlight(text, { language }).value;
+  } else {
+    highlighted = hljs.highlightAuto(text).value;
+  }
+  return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
+};
+
+marked.use({ renderer, breaks: true, gfm: true });
 
 const COLORS = ['#e94560', '#4ade80', '#60a5fa', '#f59e0b', '#a78bfa', '#34d399', '#fb923c', '#2dd4bf'];
 const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
@@ -139,6 +176,11 @@ function ReplyPreview({ replyTo }) {
   );
 }
 
+function renderMarkdown(text) {
+  if (!text) return '';
+  return marked.parse(text);
+}
+
 function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQuery, onReply }) {
   const bottomRef = useRef(null);
   const [editMsgId, setEditMsgId] = useState(null);
@@ -231,7 +273,11 @@ function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQ
                 </div>
               ) : (
                 <div className="msg-content">
-                  {highlightText(msg.content, searchQuery)}
+                  {searchQuery ? (
+                    highlightText(msg.content, searchQuery)
+                  ) : (
+                    <span dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                  )}
                   {msg.edited && <span className="edited-badge">edited</span>}
                 </div>
               )}
