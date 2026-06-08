@@ -24,8 +24,8 @@ function App() {
   };
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
+    const savedToken = sessionStorage.getItem('token');
+    const savedUser = sessionStorage.getItem('user');
     if (savedToken && savedUser) {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
@@ -45,7 +45,7 @@ function App() {
           setProfile(data);
           const updatedUser = { id: data.id, username: data.username, is_admin: data.is_admin };
           setUser(updatedUser);
-          localStorage.setItem('user', JSON.stringify(updatedUser));
+          sessionStorage.setItem('user', JSON.stringify(updatedUser));
         }
         setProfileLoaded(true);
       })
@@ -62,7 +62,7 @@ function App() {
         setProfile(data);
         const updatedUser = { id: data.id, username: data.username, is_admin: data.is_admin };
         setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
       }
     });
     setSocket(newSocket);
@@ -74,8 +74,8 @@ function App() {
     setToken(authToken);
     setConnecting(true);
     setProfileLoaded(false);
-    localStorage.setItem('token', authToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+    sessionStorage.setItem('token', authToken);
+    sessionStorage.setItem('user', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
@@ -86,8 +86,8 @@ function App() {
     setConnecting(false);
     setProfile(null);
     setProfileLoaded(false);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
   };
 
   if (!user) {
