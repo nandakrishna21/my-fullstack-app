@@ -148,20 +148,22 @@ function ReactionBar({ reactions, onReact }) {
   );
 }
 
-function MessageActions({ isOwn, onEdit, onDelete, msg, setEditMsgId, editMsgId }) {
+function MessageActions({ isOwn, onEdit, onDelete, msg, setEditMsgId, editMsgId, onReply }) {
   const [showActions, setShowActions] = useState(false);
   return (
     <div className="msg-actions-wrap">
-      {isOwn && (
-        <>
-          <button className="msg-actions-btn" onClick={() => setShowActions(!showActions)}>⋯</button>
-          {showActions && (
-            <div className="msg-actions-menu" onMouseLeave={() => setShowActions(false)}>
+      <button className="msg-actions-btn" onClick={() => setShowActions(!showActions)}>⋯</button>
+      {showActions && (
+        <div className="msg-actions-menu" onMouseLeave={() => setShowActions(false)}>
+          <button onClick={() => { onReply(msg); setShowActions(false); }}>↩️ Reply</button>
+          {isOwn && (
+            <>
+              <div className="msg-actions-divider" />
               <button onClick={() => { setEditMsgId(msg.id); setShowActions(false); }}>✏️ Edit</button>
               <button onClick={() => { onDelete(msg.id); setShowActions(false); }}>🗑️ Delete</button>
-            </div>
+            </>
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -256,44 +258,40 @@ function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQ
                   <span className="sender-name">{msg.username}</span>
                 </div>
               )}
-              <div className="msg-row">
-                <div className="msg-bubble">
-                  <MessageActions isOwn={isOwn} onEdit={onEdit} onDelete={onDelete} msg={msg} setEditMsgId={setEditMsgId} editMsgId={editMsgId} />
-                  <ReplyPreview replyTo={msg.reply_to_message} />
-                  {hasFile && <FilePreview msg={msg} />}
-                  {editMsgId === msg.id ? (
-                    <div className="edit-input-wrap">
-                      <input
-                        ref={editInputRef}
-                        className="edit-input"
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleEditSubmit(msg.id);
-                          if (e.key === 'Escape') { setEditMsgId(null); setEditContent(''); }
-                        }}
-                      />
-                      <div className="edit-actions">
-                        <button className="edit-cancel" onClick={() => { setEditMsgId(null); setEditContent(''); }}>Cancel</button>
-                        <button className="edit-save" onClick={() => handleEditSubmit(msg.id)}>Save</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="msg-content">
-                      {searchQuery ? (
-                        highlightText(msg.content, searchQuery)
-                      ) : (
-                        <span dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-                      )}
-                      {msg.edited && <span className="edited-badge">edited</span>}
-                    </div>
-                  )}
-                  <div className="msg-time">
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <MessageActions isOwn={isOwn} onEdit={onEdit} onDelete={onDelete} msg={msg} setEditMsgId={setEditMsgId} editMsgId={editMsgId} onReply={onReply} />
+              <ReplyPreview replyTo={msg.reply_to_message} />
+              {hasFile && <FilePreview msg={msg} />}
+              {editMsgId === msg.id ? (
+                <div className="edit-input-wrap">
+                  <input
+                    ref={editInputRef}
+                    className="edit-input"
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleEditSubmit(msg.id);
+                      if (e.key === 'Escape') { setEditMsgId(null); setEditContent(''); }
+                    }}
+                  />
+                  <div className="edit-actions">
+                    <button className="edit-cancel" onClick={() => { setEditMsgId(null); setEditContent(''); }}>Cancel</button>
+                    <button className="edit-save" onClick={() => handleEditSubmit(msg.id)}>Save</button>
                   </div>
                 </div>
-                <button className="msg-reply-btn" onClick={() => onReply(msg)} title="Reply">↰</button>
+              ) : (
+                <div className="msg-content">
+                  {searchQuery ? (
+                    highlightText(msg.content, searchQuery)
+                  ) : (
+                    <span dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                  )}
+                  {msg.edited && <span className="edited-badge">edited</span>}
+                </div>
+              )}
+              <div className="msg-time">
+                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
+            </div>
             </div>
             <ReactionBar reactions={reactions} onReact={(emoji) => onReact(msg.id, emoji)} />
           </div>
