@@ -866,6 +866,40 @@ body {
   align-self: flex-end;
 }
 
+.msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.msg-bubble {
+  flex-shrink: 1;
+}
+
+.msg-reply-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.message:hover .msg-reply-btn {
+  opacity: 1;
+}
+
+.msg-reply-btn:hover {
+  background: var(--accent-ring);
+  color: var(--accent);
+}
+
 .message.other {
   align-self: flex-start;
 }
