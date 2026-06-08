@@ -105,13 +105,14 @@ function ReactionBar({ reactions, onReact }) {
   );
 }
 
-function MessageActions({ isOwn, onEdit, onDelete, msg, setEditMsgId, editMsgId }) {
+function MessageActions({ isOwn, onEdit, onDelete, msg, setEditMsgId, editMsgId, onReply }) {
   const [showActions, setShowActions] = useState(false);
   return (
     <div className="msg-actions-wrap">
       <button className="msg-actions-btn" onClick={() => setShowActions(!showActions)}>⋯</button>
       {showActions && (
         <div className="msg-actions-menu" onMouseLeave={() => setShowActions(false)}>
+          <button onClick={() => { onReply(msg); setShowActions(false); }}>↩️ Reply</button>
           {isOwn && (
             <>
               <button onClick={() => { setEditMsgId(msg.id); setShowActions(false); }}>✏️ Edit</button>
@@ -124,7 +125,21 @@ function MessageActions({ isOwn, onEdit, onDelete, msg, setEditMsgId, editMsgId 
   );
 }
 
-function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQuery }) {
+function ReplyPreview({ replyTo }) {
+  if (!replyTo) return null;
+  const text = replyTo.content || (replyTo.file_name ? `📎 ${replyTo.file_name}` : '');
+  return (
+    <div className="reply-preview">
+      <div className="reply-preview-bar" />
+      <div className="reply-preview-body">
+        <span className="reply-preview-user">{replyTo.username}</span>
+        <span className="reply-preview-text">{text?.slice(0, 80)}{text?.length > 80 ? '…' : ''}</span>
+      </div>
+    </div>
+  );
+}
+
+function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQuery, onReply }) {
   const bottomRef = useRef(null);
   const [editMsgId, setEditMsgId] = useState(null);
   const [editContent, setEditContent] = useState('');
@@ -194,7 +209,8 @@ function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQ
                   <span className="sender-name">{msg.username}</span>
                 </div>
               )}
-              <MessageActions isOwn={isOwn} onEdit={onEdit} onDelete={onDelete} msg={msg} setEditMsgId={setEditMsgId} editMsgId={editMsgId} />
+              <MessageActions isOwn={isOwn} onEdit={onEdit} onDelete={onDelete} msg={msg} setEditMsgId={setEditMsgId} editMsgId={editMsgId} onReply={onReply} />
+              <ReplyPreview replyTo={msg.reply_to_message} />
               {hasFile && <FilePreview msg={msg} />}
               {editMsgId === msg.id ? (
                 <div className="edit-input-wrap">

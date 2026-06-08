@@ -78,13 +78,17 @@ app.post('/api/upload', authenticateToken, (req, res) => {
 
 app.post('/api/messages', authenticateToken, async (req, res) => {
   try {
-    const { room_id, content, file_url, file_name, file_type, file_size } = req.body;
+    const { room_id, content, reply_to, file_url, file_name, file_type, file_size } = req.body;
     const result = await pool.query(
-      `INSERT INTO messages (room_id, user_id, username, content, file_url, file_name, file_type, file_size)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [room_id || 1, req.user.id, req.user.username, content || null, file_url || null, file_name || null, file_type || null, file_size || null]
+      `INSERT INTO messages (room_id, user_id, username, content, file_url, file_name, file_type, file_size, reply_to)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [room_id || 1, req.user.id, req.user.username, content || null, file_url || null, file_name || null, file_type || null, file_size || null, reply_to || null]
     );
     const msg = result.rows[0];
+    if (msg.reply_to) {
+      const replyRes = await pool.query('SELECT id, username, content, file_url, file_name FROM messages WHERE id = $1', [msg.reply_to]);
+      msg.reply_to_message = replyRes.rows[0] || null;
+    }
     io.emit('new_message', msg);
     res.status(201).json(msg);
   } catch (err) {
@@ -96,21 +100,23 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 app.get('/api/messages', authenticateToken, async (req, res) => {
   try {
     const { search, room_id } = req.query;
-    let query = 'SELECT * FROM messages';
+    let query = `SELECT m.*, 
+      jsonb_build_object('id', r.id, 'username', r.username, 'content', r.content, 'file_url', r.file_url, 'file_name', r.file_name) AS reply_to_message
+      FROM messages m LEFT JOIN messages r ON m.reply_to = r.id`;
     let params = [];
     const conditions = [];
     if (room_id) {
-      conditions.push(`room_id = $${params.length + 1}`);
+      conditions.push(`m.room_id = $${params.length + 1}`);
       params.push(room_id);
     }
     if (search) {
-      conditions.push(`content ILIKE $${params.length + 1}`);
+      conditions.push(`m.content ILIKE $${params.length + 1}`);
       params.push(`%${search}%`);
     }
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
-    query += ' ORDER BY created_at ASC LIMIT 100';
+    query += ' ORDER BY m.created_at ASC LIMIT 100';
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
@@ -493,12 +499,17 @@ io.on('connection', (socket) => {
   socket.on('send_message', async (data) => {
     try {
       const result = await pool.query(
-        `INSERT INTO messages (room_id, user_id, username, content, file_url, file_name, file_type, file_size)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO messages (room_id, user_id, username, content, file_url, file_name, file_type, file_size, reply_to)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING *`,
-        [data.roomId || 1, data.userId, data.username, data.content || null, data.fileUrl || null, data.fileName || null, data.fileType || null, data.fileSize || null]
+        [data.roomId || 1, data.userId, data.username, data.content || null, data.fileUrl || null, data.fileName || null, data.fileType || null, data.fileSize || null, data.replyTo || null]
       );
-      io.emit('new_message', result.rows[0]);
+      const msg = result.rows[0];
+      if (msg.reply_to) {
+        const replyRes = await pool.query('SELECT id, username, content, file_url, file_name FROM messages WHERE id = $1', [msg.reply_to]);
+        msg.reply_to_message = replyRes.rows[0] || null;
+      }
+      io.emit('new_message', msg);
     } catch (err) {
       console.error('Save message error:', err.message);
       io.emit('new_message', {
@@ -511,6 +522,7 @@ io.on('connection', (socket) => {
         file_name: data.fileName || null,
         file_type: data.fileType || null,
         file_size: data.fileSize || null,
+        reply_to: data.replyTo || null,
         reactions: {},
         edited: false,
         created_at: new Date().toISOString(),

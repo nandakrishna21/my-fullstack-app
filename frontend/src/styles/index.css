@@ -426,9 +426,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
+  opacity: 0.8;
   transition: opacity 0.15s, background 0.15s, color 0.15s;
   line-height: 1;
+  margin-left: 4px;
 }
 
 .user-profile:hover .profile-edit-inline {
@@ -438,6 +439,7 @@ body {
 .profile-edit-inline:hover {
   background: var(--accent-ring);
   color: var(--accent);
+  opacity: 1;
 }
 
 .user-profile .status {
@@ -1189,6 +1191,95 @@ body {
   background: var(--danger-hover);
   color: var(--danger);
   border-color: var(--danger);
+}
+
+/* ─── Reply Bar ─── */
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.reply-bar-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.reply-bar-user {
+  font-weight: 600;
+  color: var(--accent);
+  display: block;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.reply-bar-text {
+  color: var(--text-secondary);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-bar-close {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.reply-bar-close:hover {
+  background: var(--accent-ring);
+  color: var(--text-primary);
+}
+
+/* ─── Reply Preview in Message ─── */
+
+.reply-preview {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.reply-preview-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.reply-preview-body {
+  overflow: hidden;
+}
+
+.reply-preview-user {
+  font-weight: 600;
+  color: var(--accent);
+  display: block;
+  font-size: 12px;
+  margin-bottom: 1px;
+}
+
+.reply-preview-text {
+  color: var(--text-secondary);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ─── Message Input ─── */

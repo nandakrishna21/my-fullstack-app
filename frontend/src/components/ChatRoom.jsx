@@ -34,6 +34,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const [showJoinChannel, setShowJoinChannel] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
   const searchInputRef = useRef(null);
   const fetchRef = useRef(0);
   const roomRef = useRef(activeRoom);
@@ -177,6 +178,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   const switchRoom = (roomId) => {
     setActiveRoom(roomId);
     setSearchQuery('');
+    setReplyingTo(null);
   };
 
   const handleCreateRoom = async () => {
@@ -290,10 +292,11 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       const res = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ room_id: activeRoom, content }),
+        body: JSON.stringify({ room_id: activeRoom, content, reply_to: replyingTo?.id || null }),
       });
       if (!res.ok) return;
     } catch {}
+    setReplyingTo(null);
     socket.emit('stop_typing', user.username);
   };
 
@@ -313,6 +316,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         body: JSON.stringify({
           room_id: activeRoom, content: null,
           file_url: data.url, file_name: data.name, file_type: data.type, file_size: data.size,
+          reply_to: replyingTo?.id || null,
         }),
       });
     } catch (err) { alert('Upload failed: ' + err.message); }
@@ -540,7 +544,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
             <p>Loading messages...</p>
           </div>
         ) : (
-          <MessageList messages={messages} currentUser={user.username} onEdit={handleEdit} onDelete={handleDelete} onReact={handleReact} searchQuery={searchQuery} />
+          <MessageList messages={messages} currentUser={user.username} onEdit={handleEdit} onDelete={handleDelete} onReact={handleReact} searchQuery={searchQuery} onReply={setReplyingTo} />
         )}
         {typingText && (
           <div className="typing-indicator">
@@ -548,7 +552,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
             {typingText}
           </div>
         )}
-        <MessageInput onSend={handleSend} onFileSend={handleFileSend} onTyping={handleTyping} onStopTyping={handleStopTyping} uploading={uploading} />
+        <MessageInput onSend={handleSend} onFileSend={handleFileSend} onTyping={handleTyping} onStopTyping={handleStopTyping} uploading={uploading} replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} />
       </div>
 
       {showProfileModal && (

@@ -73,6 +73,7 @@ export async function initDB() {
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_type VARCHAR(100)`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_size INTEGER`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to INTEGER REFERENCES messages(id) ON DELETE SET NULL`);
     await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS type VARCHAR(10) DEFAULT 'channel'`);
     await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS participant_ids INTEGER[] DEFAULT '{}'`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE`);

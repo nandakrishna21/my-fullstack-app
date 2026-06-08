@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 
-function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading }) {
+function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, replyingTo, onCancelReply }) {
   const [content, setContent] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const typingTimeout = useRef(null);
@@ -75,8 +75,21 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading })
     </div>
   ) : null;
 
+  const replyText = replyingTo
+    ? (replyingTo.content || (replyingTo.file_name ? `📎 ${replyingTo.file_name}` : ''))
+    : '';
+
   return (
     <div className="input-wrapper">
+      {replyingTo && (
+        <div className="reply-bar">
+          <div className="reply-bar-body">
+            <span className="reply-bar-user">{replyingTo.username}</span>
+            <span className="reply-bar-text">{replyText?.slice(0, 80)}{replyText?.length > 80 ? '…' : ''}</span>
+          </div>
+          <button type="button" className="reply-bar-close" onClick={onCancelReply}>✕</button>
+        </div>
+      )}
       {filePreview}
       <form className="message-input-area" onSubmit={handleSubmit}>
         <button
