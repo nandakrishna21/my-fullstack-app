@@ -375,7 +375,8 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   };
 
   const displayName = profile?.display_name || user.username;
-  const displayAvatar = profile?.avatar_url ? `${API_URL}${profile.avatar_url}` : null;
+  const [avatarBroken, setAvatarBroken] = useState(false);
+  const displayAvatar = profile?.avatar_url && !avatarBroken ? `${API_URL}${profile.avatar_url}` : null;
   const userColor = hashColor(user.username);
   const isAdmin = profile?.is_admin || user?.is_admin;
   const onlineCount = onlineUsers.length;
@@ -392,8 +393,10 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
       <div className="sidebar">
         <div className="sidebar-section">
           <div className="user-profile" onClick={() => setShowUserMenu(!showUserMenu)} style={{ cursor: 'pointer', position: 'relative' }}>
-            <div className="avatar" style={{ background: displayAvatar ? `url(${displayAvatar}) center/cover` : userColor }}>
-              {!displayAvatar && displayName[0].toUpperCase()}
+            <div className="avatar" style={{ background: userColor }}>
+              {displayAvatar ? (
+                <img src={displayAvatar} alt="" className="avatar-img" onError={() => setAvatarBroken(true)} />
+              ) : displayName[0].toUpperCase()}
             </div>
             <div>
               <div className="username">{displayName} {isAdmin && <span className="admin-badge">Admin</span>}
@@ -406,8 +409,10 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
             {showUserMenu && (
               <div className="user-menu">
                 <div className="user-menu-header">
-                  <div className="user-menu-avatar" style={{ background: displayAvatar ? `url(${displayAvatar}) center/cover` : userColor }}>
-                    {!displayAvatar && displayName[0].toUpperCase()}
+                  <div className="user-menu-avatar" style={{ background: userColor }}>
+                    {displayAvatar ? (
+                      <img src={displayAvatar} alt="" className="avatar-img" />
+                    ) : displayName[0].toUpperCase()}
                   </div>
                   <div>
                     <div className="user-menu-name">{displayName}</div>
