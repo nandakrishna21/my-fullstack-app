@@ -799,30 +799,23 @@ body {
 /* ─── Messages ─── */
 
 .message {
-  padding: 6px 10px;
-  border-radius: 10px;
-  max-width: 68%;
+  padding: 2px 0;
   width: fit-content;
+  max-width: 68%;
   word-wrap: break-word;
   animation: msgIn 0.2s ease;
   position: relative;
 }
 
 .message.own {
-  background: var(--accent-gradient);
   align-self: flex-end;
-  border-bottom-right-radius: 4px;
 }
 
 .message.other {
-  background: var(--bg-msg-other);
   align-self: flex-start;
-  border-bottom-left-radius: 4px;
-  transition: background 0.3s ease;
 }
 
 .message.system {
-  background: transparent;
   align-self: center;
   font-size: 12px;
   color: var(--text-tertiary);
@@ -831,7 +824,6 @@ body {
   animation: none;
   margin: 4px 0;
   width: auto;
-  transition: color 0.3s ease;
 }
 
 .msg-sender {
@@ -863,37 +855,35 @@ body {
 
 .msg-content {
   font-size: 14px;
-  line-height: 1.35;
-  color: var(--text-white);
+  line-height: 1.4;
+  color: var(--text-primary);
 }
 
 .message.other .msg-content {
-  color: var(--msg-other-text);
-  transition: color 0.3s ease;
+  color: var(--text-primary);
 }
 
 .msg-time {
   font-size: 9px;
-  color: var(--msg-own-time);
+  color: var(--text-tertiary);
   margin-top: 2px;
   text-align: right;
-  transition: color 0.3s ease;
 }
 
 .message.own .msg-time {
-  color: var(--msg-own-time);
+  color: var(--text-tertiary);
 }
 
 .message.other .msg-time {
-  color: var(--msg-other-time);
+  color: var(--text-tertiary);
 }
 
 .has-file {
-  padding: 8px 8px 10px 14px;
+  padding: 0;
 }
 
 .message.own.has-file {
-  padding: 8px 8px 10px 14px;
+  padding: 0;
 }
 
 /* ─── File Attachment in Message ─── */
