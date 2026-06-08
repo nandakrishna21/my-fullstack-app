@@ -69,6 +69,10 @@ export async function initDB() {
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '{}'`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN DEFAULT FALSE`);
     await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS room_id INTEGER DEFAULT 1`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_url VARCHAR(500)`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_type VARCHAR(100)`);
+    await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_size INTEGER`);
     await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS type VARCHAR(10) DEFAULT 'channel'`);
     await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS participant_ids INTEGER[] DEFAULT '{}'`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE`);
