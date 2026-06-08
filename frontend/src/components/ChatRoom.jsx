@@ -324,10 +324,30 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   };
 
   const handleReact = async (msgId, emoji) => {
-    await fetch(`${API_URL}/api/messages/${msgId}/react`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ emoji }),
-    });
+    const toggleReaction = (msgs, id, emoji) => {
+      const username = user.username;
+      return msgs.map((m) => {
+        if (m.id !== id) return m;
+        const reactions = { ...(m.reactions || {}) };
+        const list = [...(reactions[emoji] || [])];
+        const idx = list.indexOf(username);
+        if (idx >= 0) { list.splice(idx, 1); } else { list.push(username); }
+        if (list.length) { reactions[emoji] = list; } else { delete reactions[emoji]; }
+        return { ...m, reactions };
+      });
+    };
+    setMessages((prev) => toggleReaction(prev, msgId, emoji));
+    try {
+      const res = await fetch(`${API_URL}/api/messages/${msgId}/react`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ emoji }),
+      });
+      if (!res.ok) {
+        setMessages((prev) => toggleReaction(prev, msgId, emoji));
+      }
+    } catch {
+      setMessages((prev) => toggleReaction(prev, msgId, emoji));
+    }
   };
 
   const handleTyping = () => { if (socket) socket.emit('typing', user.username); };

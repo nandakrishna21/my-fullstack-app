@@ -339,7 +339,7 @@ app.post('/api/messages/:id/react', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Message not found' });
     }
     const msg = msgResult.rows[0];
-    const reactions = msg.reactions || {};
+    const reactions = typeof msg.reactions === 'string' ? JSON.parse(msg.reactions) : (msg.reactions || {});
     const username = req.user.username;
     if (reactions[emoji] && reactions[emoji].includes(username)) {
       reactions[emoji] = reactions[emoji].filter((u) => u !== username);
