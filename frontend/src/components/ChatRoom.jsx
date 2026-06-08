@@ -631,7 +631,7 @@ function RoomListItem({ room, active, editing, editName, onSelect, onStartEdit, 
       {showMenu && (
         <div className="room-context-menu" onMouseLeave={() => setShowMenu(false)} onClick={(e) => e.stopPropagation()}>
           {!dm && !noMenu && isAdmin && <button onClick={() => { setShowMenu(false); onStartEdit(); }}>✏️ Rename</button>}
-          {!noMenu && <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>}
+          {!noMenu && isAdmin && <button onClick={() => { setShowMenu(false); onDelete(); }}>🗑️ Delete</button>}
           {!dm && <button onClick={() => { setShowMenu(false); onInvite(); }}>🔗 Copy Invite Link</button>}
           <button onClick={() => { setShowMenu(false); onClearChat(); }}>🧹 Clear Chat</button>
         </div>
