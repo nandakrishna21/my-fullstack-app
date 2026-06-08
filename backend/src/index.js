@@ -430,7 +430,7 @@ app.post('/api/users/avatar', authenticateToken, (req, res) => {
       res.json(result.rows[0]);
     } catch (dbErr) {
       console.error('Avatar update error:', dbErr.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server error' });
     }
   });
 });

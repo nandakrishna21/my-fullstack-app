@@ -316,7 +316,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          room_id: activeRoom, content: null,
+          room_id: activeRoom, content: '',
           file_url: data.url, file_name: data.name, file_type: data.type, file_size: data.size,
           reply_to: replyingTo?.id || null,
         }),
