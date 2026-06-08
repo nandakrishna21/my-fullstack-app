@@ -3,6 +3,8 @@ import { useState, useRef, useEffect } from 'react';
 function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, replyingTo, onCancelReply }) {
   const [content, setContent] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  const [selectedFileType, setSelectedFileType] = useState('');
   const typingTimeout = useRef(null);
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
@@ -19,6 +21,8 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, r
     if (selectedFile) {
       await onFileSend(selectedFile);
       setSelectedFile(null);
+      setSelectedFileName('');
+      setSelectedFileType('');
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -29,13 +33,26 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, r
     setContent('');
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const validTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      alert('Only PNG, JPEG, GIF, WebP images and PDF files are allowed');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File too large (max 10MB)');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
     setSelectedFile(file);
+    setSelectedFileName(file.name);
+    setSelectedFileType(file.type);
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = async (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
@@ -44,6 +61,8 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, r
         const file = item.getAsFile();
         if (file) {
           setSelectedFile(file);
+          setSelectedFileName(file.name);
+          setSelectedFileType(file.type);
         }
         return;
       }
@@ -52,6 +71,8 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, r
 
   const clearFile = () => {
     setSelectedFile(null);
+    setSelectedFileName('');
+    setSelectedFileType('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -68,7 +89,7 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, r
       ) : (
         <div className="file-preview-pdf">
           <span className="file-preview-icon">📄</span>
-          <span className="file-preview-name">{selectedFile.name}</span>
+          <span className="file-preview-name">{selectedFileName}</span>
         </div>
       )}
       <button type="button" className="file-preview-remove" onClick={clearFile}>✕</button>

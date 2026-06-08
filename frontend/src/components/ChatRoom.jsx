@@ -301,6 +301,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
   };
 
   const handleFileSend = async (file) => {
+    if (!file) return alert('No file selected');
     setUploading(true);
     try {
       const formData = new FormData();
@@ -309,8 +310,9 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      await fetch(`${API_URL}/api/messages`, {
+      if (!res.ok) throw new Error(data.error || 'Upload rejected');
+      if (!data.url) throw new Error('No file URL returned');
+      const msgRes = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -319,6 +321,7 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
           reply_to: replyingTo?.id || null,
         }),
       });
+      if (!msgRes.ok) throw new Error('Failed to create message');
     } catch (err) { alert('Upload failed: ' + err.message); }
     finally { setUploading(false); }
   };
