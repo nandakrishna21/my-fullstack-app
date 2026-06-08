@@ -738,6 +738,7 @@ body {
 .messages {
   flex: 1;
   padding: 20px 32px;
+  background: var(--bg-msg-other);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
