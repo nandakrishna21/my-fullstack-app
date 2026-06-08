@@ -73,6 +73,8 @@ export async function initDB() {
     await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS participant_ids INTEGER[] DEFAULT '{}'`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE`);
     await pool.query(`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS invite_code VARCHAR(20)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expiry TIMESTAMP`);
     console.log('Schema migrations applied');
   } catch (err) {
     console.error('Schema migration error:', err.message);

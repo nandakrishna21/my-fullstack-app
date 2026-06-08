@@ -149,7 +149,11 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
         return next;
       });
     });
-    socket.on('message_react', (msg) => setMessages((prev) => prev.map((m) => m.id === msg.id ? msg : m)));
+    socket.on('message_react', (msg) => setMessages((prev) => {
+      const next = prev.map((m) => m.id === msg.id ? msg : m);
+      cacheMessages(activeRoom, next);
+      return next;
+    }));
     socket.on('new_room', (room) => setRooms((prev) => [...prev, room]));
     socket.on('room_updated', (room) => setRooms((prev) => prev.map((r) => r.id === room.id ? room : r)));
     socket.on('room_deleted', ({ id }) => setRooms((prev) => prev.filter((r) => r.id !== id)));
