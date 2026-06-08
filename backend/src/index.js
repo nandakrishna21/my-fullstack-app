@@ -89,7 +89,7 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
     res.status(201).json(msg);
   } catch (err) {
     console.error('Create message error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
