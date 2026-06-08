@@ -14,10 +14,10 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, r
     typingTimeout.current = setTimeout(() => onStopTyping(), 1500);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (selectedFile) {
-      onFileSend(selectedFile);
+      await onFileSend(selectedFile);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
@@ -25,7 +25,7 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, r
     if (!content.trim()) return;
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
     onStopTyping();
-    onSend(content.trim());
+    await onSend(content.trim());
     setContent('');
   };
 
@@ -105,7 +105,7 @@ function MessageInput({ onSend, onFileSend, onTyping, onStopTyping, uploading, r
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept="image/*,.pdf"
+          accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,image/*"
           style={{ display: 'none' }}
         />
         <input
