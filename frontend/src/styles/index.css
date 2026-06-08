@@ -854,7 +854,7 @@ body {
 /* ─── Messages ─── */
 
 .message {
-  padding: 2px 0;
+  padding: 2px 36px 2px 0;
   width: fit-content;
   max-width: 68%;
   word-wrap: break-word;
@@ -1719,8 +1719,8 @@ body {
 
 .msg-actions-wrap {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: -4px;
+  right: -32px;
   z-index: 10;
 }
 
