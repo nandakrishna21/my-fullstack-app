@@ -398,7 +398,9 @@ function ChatRoom({ user, token, socket, profile, onProfileUpdate, onLogout, the
               {!displayAvatar && displayName[0].toUpperCase()}
             </div>
             <div>
-              <div className="username">{displayName} {isAdmin && <span className="admin-badge">Admin</span>}</div>
+              <div className="username">{displayName} {isAdmin && <span className="admin-badge">Admin</span>}
+                <button className="profile-edit-inline" onClick={(e) => { e.stopPropagation(); setShowProfileModal(true); }} title="Edit profile">✎</button>
+              </div>
               <div className="status" style={{ color: appearOffline ? 'rgba(255,255,255,0.3)' : undefined }}>
                 {appearOffline ? '● Offline' : '● Online'}
               </div>

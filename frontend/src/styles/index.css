@@ -409,6 +409,35 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-edit-inline {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.user-profile:hover .profile-edit-inline {
+  opacity: 1;
+}
+
+.profile-edit-inline:hover {
+  background: var(--accent-ring);
+  color: var(--accent);
 }
 
 .user-profile .status {
