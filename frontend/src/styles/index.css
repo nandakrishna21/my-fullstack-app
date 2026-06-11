@@ -887,6 +887,42 @@ body {
   width: auto;
 }
 
+.message.urgent-alert {
+  background: linear-gradient(135deg, #fff0f0 0%, #ffe0e0 100%) !important;
+  border: 2px solid #ff4444 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 0 12px rgba(255, 68, 68, 0.25) !important;
+  animation: urgentPulse 2s ease-in-out infinite !important;
+}
+
+[data-theme="dark"] .message.urgent-alert {
+  background: linear-gradient(135deg, #3a1010 0%, #4a1515 100%) !important;
+  border-color: #ff6666 !important;
+  box-shadow: 0 0 12px rgba(255, 68, 68, 0.35) !important;
+}
+
+@keyframes urgentPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 68, 68, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); }
+}
+
+.urgent-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #ff4444;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  animation: badgePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
 .msg-sender {
   display: flex;
   align-items: center;

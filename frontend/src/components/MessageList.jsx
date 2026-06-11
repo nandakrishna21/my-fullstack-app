@@ -183,6 +183,11 @@ function ReplyPreview({ replyTo }) {
   );
 }
 
+function isUrgent(text) {
+  if (!text) return false;
+  return /\b(urgent|emergency)\b/i.test(text);
+}
+
 function renderMarkdown(text) {
   if (!text) return '';
   return marked.parse(text);
@@ -243,13 +248,14 @@ function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQ
         const isOwn = msg.username === currentUser;
         const hasFile = msg.file_url;
         const reactions = msg.reactions || {};
+        const urgent = isUrgent(msg.content);
 
         return (
           <div key={msg.id}>
             {showDateSep && (
               <div className="date-separator"><span>{formatDate(msg.created_at)}</span></div>
             )}
-            <div className={`message ${isOwn ? 'own' : 'other'} ${hasFile ? 'has-file' : ''}`}>
+            <div className={`message ${isOwn ? 'own' : 'other'} ${hasFile ? 'has-file' : ''} ${urgent ? 'urgent-alert' : ''}`}>
               {!isOwn && (
                 <div className="msg-sender">
                   <div className="sender-avatar" style={{ background: hashColor(msg.username) }}>
@@ -280,6 +286,7 @@ function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQ
                 </div>
               ) : (
                 <div className="msg-content">
+                  {urgent && <span className="urgent-badge">🚨 URGENT</span>}
                   {searchQuery ? (
                     highlightText(msg.content, searchQuery)
                   ) : (
@@ -291,7 +298,6 @@ function MessageList({ messages, currentUser, onEdit, onDelete, onReact, searchQ
               <div className="msg-time">
                 {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
-            </div>
             </div>
             <ReactionBar reactions={reactions} onReact={(emoji) => onReact(msg.id, emoji)} />
           </div>
